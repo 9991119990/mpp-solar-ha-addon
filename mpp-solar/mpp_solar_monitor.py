@@ -69,9 +69,9 @@ class MPPSolarMonitor:
         while retry_count < 30:  # Try for 5 minutes
             if os.path.exists(self.device):
                 try:
-                    # Try to set permissions
+                    # Check permissions (no chmod in container)
                     if not os.access(self.device, os.R_OK | os.W_OK):
-                        os.chmod(self.device, 0o666)
+                        logger.warning(f"Device {self.device} not accessible")
                     logger.info(f"Device {self.device} found and accessible")
                     return True
                 except Exception as e:

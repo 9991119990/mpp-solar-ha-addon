@@ -32,12 +32,15 @@ else
     bashio::log.warning "MQTT service not available, using configured host"
 fi
 
-# Set device permissions
+# Check device availability  
 if [ -e "${DEVICE}" ]; then
-    chmod 666 "${DEVICE}"
-    bashio::log.info "Device permissions set for ${DEVICE}"
+    bashio::log.info "Device ${DEVICE} found"
+    ls -la "${DEVICE}" || true
 else
-    bashio::log.warning "Device ${DEVICE} not found, will retry..."
+    bashio::log.warning "Device ${DEVICE} not found"
+    # List all hidraw devices for debugging
+    bashio::log.info "Available hidraw devices:"
+    ls -la /dev/hidraw* 2>/dev/null || bashio::log.info "No hidraw devices found"
 fi
 
 # Run the Python application

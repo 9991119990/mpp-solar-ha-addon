@@ -38,3 +38,6 @@ devices:
   - /dev/hidraw3
 services:
   - mqtt:want
+privileged:
+  - SYS_ADMIN
+full_access: true
