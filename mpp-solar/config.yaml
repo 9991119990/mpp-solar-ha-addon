@@ -21,7 +21,7 @@ options:
   mqtt_username: ""
   mqtt_password: ""
   mqtt_topic: "mpp_solar"
-  debug: false
+  debug: true
 schema:
   device: str
   interval: int(10,300)

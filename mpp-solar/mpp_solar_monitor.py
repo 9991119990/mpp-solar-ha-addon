@@ -89,32 +89,44 @@ class MPPSolarMonitor:
     def read_inverter_data(self):
         """Read data from inverter via HID"""
         try:
+            logger.debug(f"Opening device {self.device}")
             with open(self.device, 'r+b', buffering=0) as hid:
                 # Clear any pending data
+                logger.debug("Clearing pending data")
                 hid.read(200)
                 
                 # Send QPIGS command
                 cmd = self.create_command('QPIGS')
+                logger.debug(f"Sending QPIGS command: {cmd.hex()}")
                 hid.write(cmd)
                 time.sleep(1)
                 
                 # Read response
                 response = hid.read(200)
+                logger.debug(f"Received response: {len(response)} bytes - {response[:50]}")
                 
                 if response and len(response) > 50:
                     # Decode response
                     text = response.decode('ascii', errors='ignore').strip()
+                    logger.debug(f"Decoded text: {text[:100]}")
+                    
                     if text.startswith('(') and text.find(')') > 0:
                         # Extract data between parentheses
                         data_str = text[text.find('(')+1:text.find(')')]
                         values = data_str.split()
+                        logger.debug(f"Parsed values count: {len(values)}")
                         
                         if len(values) >= 21:
                             return self.parse_qpigs(values)
                         else:
-                            logger.warning(f"Invalid response length: {len(values)}")
+                            logger.warning(f"Invalid response length: {len(values)} (need >=21)")
+                            logger.warning(f"Values: {values}")
+                    else:
+                        logger.warning(f"Invalid response format: {text[:50]}")
                 else:
-                    logger.warning(f"No valid response from inverter")
+                    logger.warning(f"No valid response from inverter (got {len(response)} bytes)")
+                    if response:
+                        logger.warning(f"Response hex: {response.hex()}")
                     
         except FileNotFoundError:
             logger.error(f"Device {self.device} not found")
@@ -441,8 +453,11 @@ class MPPSolarMonitor:
         
         # Main loop
         error_count = 0
+        logger.info("Starting main monitoring loop...")
+        
         while True:
             try:
+                logger.debug("Reading inverter data...")
                 # Read inverter data
                 data = self.read_inverter_data()
                 
