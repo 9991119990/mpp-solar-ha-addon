@@ -188,11 +188,19 @@ class MPPSolarMonitor:
     def setup_mqtt(self):
         """Setup MQTT connection"""
         try:
-            self.mqtt_client = mqtt.Client(client_id=f"mpp_solar_{os.getpid()}")
+            # Use MQTT v2 API
+            self.mqtt_client = mqtt.Client(
+                client_id=f"mpp_solar_{os.getpid()}",
+                protocol=mqtt.MQTTv311
+            )
             
-            # Set authentication if provided
-            if self.mqtt_user:
+            # For Home Assistant core-mosquitto, try without auth first
+            # HA often allows local connections without authentication
+            if self.mqtt_host == "core-mosquitto":
+                logger.info("Using core-mosquitto, trying without authentication")
+            elif self.mqtt_user:
                 self.mqtt_client.username_pw_set(self.mqtt_user, self.mqtt_pass)
+                logger.info(f"Using MQTT authentication for user: {self.mqtt_user}")
                 
             def on_connect(client, userdata, flags, rc):
                 if rc == 0:
