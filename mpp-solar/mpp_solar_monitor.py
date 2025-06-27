@@ -125,7 +125,7 @@ class MPPSolarMonitor:
                     
                     # If response is short, try to read more
                     attempts = 0
-                    while len(response) < 50 and attempts < 5:
+                    while len(response) < 110 and attempts < 10:
                         time.sleep(0.1)
                         ready, _, _ = select.select([fd], [], [], 0.5)
                         if ready:
@@ -141,18 +141,29 @@ class MPPSolarMonitor:
                         text = response.decode('ascii', errors='ignore').strip()
                         logger.debug(f"Decoded text: {text[:100]}")
                         
-                        if text.startswith('(') and text.find(')') > 0:
-                            # Extract data between parentheses
-                            data_str = text[text.find('(')+1:text.find(')')]
-                            values = data_str.split()
-                            logger.debug(f"Parsed values count: {len(values)}")
+                        if text.startswith('('):
+                            # Check if we have complete response (should end with \r)
+                            if ')' not in text and len(response) < 110:
+                                logger.warning(f"Incomplete response, may need more data: {text}")
                             
-                            if len(values) >= 21:
-                                logger.info("Successfully parsed inverter data")
-                                return self.parse_qpigs(values)
+                            # Find closing parenthesis, or use end of data
+                            end_pos = text.find(')')
+                            if end_pos > 0:
+                                data_str = text[1:end_pos]
                             else:
-                                logger.warning(f"Invalid response length: {len(values)} (need >=21)")
-                                logger.warning(f"Values: {values}")
+                                # Try without closing parenthesis for incomplete data
+                                data_str = text[1:].rstrip('\r\n')
+                                logger.debug(f"Using data without closing parenthesis: {data_str}")
+                            
+                                values = data_str.split()
+                                logger.debug(f"Parsed values count: {len(values)}")
+                                
+                                if len(values) >= 21:
+                                    logger.info("Successfully parsed inverter data")
+                                    return self.parse_qpigs(values)
+                                else:
+                                    logger.warning(f"Invalid response length: {len(values)} (need >=21)")
+                                    logger.warning(f"Values: {values}")
                         else:
                             logger.warning(f"Invalid response format: {text[:50]}")
                     else:
