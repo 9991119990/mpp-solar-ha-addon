@@ -90,49 +90,77 @@ class MPPSolarMonitor:
         """Read data from inverter via HID"""
         try:
             logger.debug(f"Opening device {self.device}")
-            with open(self.device, 'r+b', buffering=0) as hid:
-                # Clear any pending data
+            
+            # Use non-blocking approach with timeout
+            import select
+            import os
+            
+            fd = os.open(self.device, os.O_RDWR | os.O_NONBLOCK)
+            try:
+                logger.debug("Device opened successfully")
+                
+                # Clear any pending data with timeout
                 logger.debug("Clearing pending data")
-                hid.read(200)
+                ready, _, _ = select.select([fd], [], [], 0.1)
+                if ready:
+                    try:
+                        os.read(fd, 200)
+                        logger.debug("Cleared pending data")
+                    except:
+                        pass
                 
                 # Send QPIGS command
                 cmd = self.create_command('QPIGS')
                 logger.debug(f"Sending QPIGS command: {cmd.hex()}")
-                hid.write(cmd)
-                time.sleep(1)
+                os.write(fd, cmd)
                 
-                # Read response
-                response = hid.read(200)
-                logger.debug(f"Received response: {len(response)} bytes - {response[:50]}")
+                # Wait for response with timeout
+                logger.debug("Waiting for response...")
+                ready, _, _ = select.select([fd], [], [], 3.0)  # 3 second timeout
                 
-                if response and len(response) > 50:
-                    # Decode response
-                    text = response.decode('ascii', errors='ignore').strip()
-                    logger.debug(f"Decoded text: {text[:100]}")
+                if ready:
+                    logger.debug("Response available, reading...")
+                    response = os.read(fd, 200)
+                    logger.debug(f"Received response: {len(response)} bytes")
                     
-                    if text.startswith('(') and text.find(')') > 0:
-                        # Extract data between parentheses
-                        data_str = text[text.find('(')+1:text.find(')')]
-                        values = data_str.split()
-                        logger.debug(f"Parsed values count: {len(values)}")
+                    if len(response) > 10:
+                        logger.debug(f"Response hex: {response[:50].hex()}")
                         
-                        if len(values) >= 21:
-                            return self.parse_qpigs(values)
+                        # Decode response
+                        text = response.decode('ascii', errors='ignore').strip()
+                        logger.debug(f"Decoded text: {text[:100]}")
+                        
+                        if text.startswith('(') and text.find(')') > 0:
+                            # Extract data between parentheses
+                            data_str = text[text.find('(')+1:text.find(')')]
+                            values = data_str.split()
+                            logger.debug(f"Parsed values count: {len(values)}")
+                            
+                            if len(values) >= 21:
+                                logger.info("Successfully parsed inverter data")
+                                return self.parse_qpigs(values)
+                            else:
+                                logger.warning(f"Invalid response length: {len(values)} (need >=21)")
+                                logger.warning(f"Values: {values}")
                         else:
-                            logger.warning(f"Invalid response length: {len(values)} (need >=21)")
-                            logger.warning(f"Values: {values}")
+                            logger.warning(f"Invalid response format: {text[:50]}")
                     else:
-                        logger.warning(f"Invalid response format: {text[:50]}")
+                        logger.warning(f"Short response: {len(response)} bytes")
+                        if response:
+                            logger.warning(f"Response hex: {response.hex()}")
                 else:
-                    logger.warning(f"No valid response from inverter (got {len(response)} bytes)")
-                    if response:
-                        logger.warning(f"Response hex: {response.hex()}")
+                    logger.warning("No response from inverter within timeout")
+                    
+            finally:
+                os.close(fd)
                     
         except FileNotFoundError:
             logger.error(f"Device {self.device} not found")
             self.device_available = False
         except Exception as e:
             logger.error(f"Error reading inverter: {e}")
+            import traceback
+            logger.debug(f"Traceback: {traceback.format_exc()}")
             
         return None
     
