@@ -10,13 +10,24 @@ MQTT_PASSWORD=$(bashio::config 'mqtt_password')
 MQTT_TOPIC=$(bashio::config 'mqtt_topic')
 DEBUG=$(bashio::config 'debug')
 
-# Try to get MQTT service info from HA
-if bashio::services.available "mqtt"; then
-    MQTT_HOST=$(bashio::services "mqtt" "host")
-    MQTT_PORT=$(bashio::services "mqtt" "port")
-    MQTT_USERNAME=$(bashio::services "mqtt" "username")
-    MQTT_PASSWORD=$(bashio::services "mqtt" "password")
-    bashio::log.info "Using MQTT service from HA: ${MQTT_HOST}:${MQTT_PORT}"
+# Try to get MQTT service info from HA (only if not configured manually)
+if bashio::services.available "mqtt" && [ "${MQTT_HOST}" = "core-mosquitto" ] && [ -z "${MQTT_USERNAME}" ]; then
+    HA_MQTT_HOST=$(bashio::services "mqtt" "host")
+    HA_MQTT_PORT=$(bashio::services "mqtt" "port")
+    HA_MQTT_USERNAME=$(bashio::services "mqtt" "username")
+    HA_MQTT_PASSWORD=$(bashio::services "mqtt" "password")
+    
+    if [ -n "${HA_MQTT_USERNAME}" ]; then
+        MQTT_HOST="${HA_MQTT_HOST}"
+        MQTT_PORT="${HA_MQTT_PORT}"
+        MQTT_USERNAME="${HA_MQTT_USERNAME}"
+        MQTT_PASSWORD="${HA_MQTT_PASSWORD}"
+        bashio::log.info "Using MQTT service from HA: ${MQTT_HOST}:${MQTT_PORT} with user ${MQTT_USERNAME}"
+    else
+        bashio::log.info "Using configured MQTT: ${MQTT_HOST}:${MQTT_PORT} with user ${MQTT_USERNAME}"
+    fi
+else
+    bashio::log.info "Using configured MQTT: ${MQTT_HOST}:${MQTT_PORT} with user ${MQTT_USERNAME}"
 fi
 
 # Export as environment variables
