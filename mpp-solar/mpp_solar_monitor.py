@@ -158,7 +158,7 @@ class MPPSolarMonitor:
                                 values = data_str.split()
                                 logger.debug(f"Parsed values count: {len(values)}")
                                 
-                                if len(values) >= 21:
+                                if len(values) >= 17:  # Relax requirement for partial data
                                     logger.info("Successfully parsed inverter data")
                                     return self.parse_qpigs(values)
                                 else:
@@ -189,6 +189,10 @@ class MPPSolarMonitor:
     def parse_qpigs(self, values):
         """Parse QPIGS response into dict"""
         try:
+            # Ensure minimum length and pad with defaults if needed
+            while len(values) < 21:
+                values.append('0')
+            
             data = {
                 # AC Input
                 'ac_input_voltage': float(values[0]),
@@ -206,20 +210,20 @@ class MPPSolarMonitor:
                 
                 # Battery
                 'battery_voltage': float(values[8]),
-                'battery_charging_current': int(values[9]),
-                'battery_capacity': int(values[10]),
-                'battery_discharge_current': int(values[16]),
+                'battery_charging_current': int(values[9]) if len(values) > 9 else 0,
+                'battery_capacity': int(values[10]) if len(values) > 10 else 0,
+                'battery_discharge_current': int(values[16]) if len(values) > 16 else 0,
                 
                 # Temperature
-                'inverter_temperature': int(values[11]),
+                'inverter_temperature': int(values[11]) if len(values) > 11 else 0,
                 
                 # PV
-                'pv_input_current': float(values[12]),
-                'pv_input_voltage': float(values[13]),
-                'battery_scc_voltage': float(values[14]),
+                'pv_input_current': float(values[12]) if len(values) > 12 else 0.0,
+                'pv_input_voltage': float(values[13]) if len(values) > 13 else 0.0,
+                'battery_scc_voltage': float(values[14]) if len(values) > 14 else 0.0,
                 
                 # Status
-                'device_status': values[20] if len(values) > 20 else '',
+                'device_status': values[20] if len(values) > 20 else '00000000',
             }
             
             # Calculate additional values
