@@ -123,6 +123,17 @@ class MPPSolarMonitor:
                     response = os.read(fd, 200)
                     logger.debug(f"Received response: {len(response)} bytes")
                     
+                    # If response is short, try to read more
+                    attempts = 0
+                    while len(response) < 50 and attempts < 5:
+                        time.sleep(0.1)
+                        ready, _, _ = select.select([fd], [], [], 0.5)
+                        if ready:
+                            more_data = os.read(fd, 200)
+                            response += more_data
+                            logger.debug(f"Read additional {len(more_data)} bytes, total: {len(response)}")
+                        attempts += 1
+                    
                     if len(response) > 10:
                         logger.debug(f"Response hex: {response[:50].hex()}")
                         
