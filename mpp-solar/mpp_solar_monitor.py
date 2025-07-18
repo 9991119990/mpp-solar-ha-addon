@@ -247,13 +247,25 @@ class MPPSolarMonitor:
                 ]
                 logger.debug(f"Possible PV powers: {possible_powers}")
             
-            # MPP Solar PV power calculation - FINAL FIX
-            # Analysis shows: calculated_power / 2.9 gives most accurate results
-            # Example: 3870.4W / 2.9 = 1334W ≈ 1330W display
+            # MPP Solar PV power calculation - ADAPTIVE CORRECTION
+            # Analysis shows correction factor varies with power level:
+            # Low power (~1kW): factor ~2.9
+            # High power (~2kW): factor ~3.4
+            # Use adaptive formula based on power level
+            
             raw_power = data['pv_input_voltage'] * data['pv_input_current']
-            if raw_power > 1000:  # If calculated power is high, apply correction factor
-                data['pv_input_power'] = round(raw_power / 2.9, 1)
-                logger.debug(f"PV power (corrected): {data['pv_input_power']}W (raw: {raw_power}W)")
+            if raw_power > 1000:  # If calculated power is high, apply adaptive correction
+                # Adaptive correction factor: 2.9 + (raw_power - 3000) * 0.0001
+                # This scales the factor based on raw power level
+                if raw_power > 6000:  # High power range
+                    correction_factor = 3.4
+                elif raw_power > 4000:  # Medium power range  
+                    correction_factor = 3.0
+                else:  # Low power range
+                    correction_factor = 2.9
+                
+                data['pv_input_power'] = round(raw_power / correction_factor, 1)
+                logger.debug(f"PV power (corrected): {data['pv_input_power']}W (raw: {raw_power}W, factor: {correction_factor})")
             else:
                 data['pv_input_power'] = round(raw_power, 1)
                 logger.debug(f"PV power (normal): {data['pv_input_power']}W")
