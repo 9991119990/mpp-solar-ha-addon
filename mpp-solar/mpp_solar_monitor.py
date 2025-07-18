@@ -231,15 +231,30 @@ class MPPSolarMonitor:
             # Raw data shows: 0367 at position 4 = 367W (matches display ~350W)
             # Don't use voltage * current calculation as current might be 0 in some modes
             
-            # Use AC output power as PV power proxy when PV current is 0
-            if data['pv_input_current'] == 0 and data['ac_output_power'] > 0:
-                # When PV current shows 0, actual PV power is reflected in AC output power
-                data['pv_input_power'] = data['ac_output_power']
-                logger.debug(f"PV power from AC output: {data['pv_input_power']}W (PV current=0)")
+            # MPP Solar PV power calculation - DEBUGGING
+            # Current shows unrealistic values, need to find correct interpretation
+            
+            # Debug all possible power values
+            logger.debug(f"Raw values: {values}")
+            if len(values) >= 16:
+                possible_powers = [
+                    int(values[4]),   # AC output power: 45W
+                    int(values[5]),   # AC apparent power: 31W
+                    int(values[7]),   # Bus voltage: 400W  
+                    round(data['pv_input_voltage'] * data['pv_input_current'], 1),  # Calculated: 3867W
+                    round(data['pv_input_voltage'] * data['pv_input_current'] / 10, 1),  # Divided by 10: 386W
+                    round(data['pv_input_voltage'] * data['pv_input_current'] / 4, 1),   # Divided by 4: 966W
+                ]
+                logger.debug(f"Possible PV powers: {possible_powers}")
+            
+            # Temporary fix - use divided value that's more realistic
+            raw_power = data['pv_input_voltage'] * data['pv_input_current']
+            if raw_power > 2000:  # If too high, divide by 4
+                data['pv_input_power'] = round(raw_power / 4, 1)
+                logger.debug(f"PV power (divided by 4): {data['pv_input_power']}W")
             else:
-                # Normal calculation when PV current is available
-                data['pv_input_power'] = round(data['pv_input_voltage'] * data['pv_input_current'], 1)
-                logger.debug(f"PV power calculated: {data['pv_input_power']}W")
+                data['pv_input_power'] = round(raw_power, 1)
+                logger.debug(f"PV power (normal): {data['pv_input_power']}W")
             
             # Battery power (positive = charging, negative = discharging)
             battery_current = data['battery_charging_current'] - data['battery_discharge_current']
