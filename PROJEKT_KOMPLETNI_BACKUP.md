@@ -2,8 +2,8 @@
 
 ## 📋 Shrnutí projektu
 
-**Datum dokončení:** 27. června 2025
-**Status:** ✅ ÚSPĚŠNĚ DOKONČEN A FUNKČNÍ
+**Datum dokončení:** 27. června 2025 (aktualizováno 19:35)
+**Status:** ✅ ÚSPĚŠNĚ DOKONČEN A OPTIMALIZOVÁN
 
 Vytvořili jsme kompletní Home Assistant add-on pro monitoring MPP Solar PIP5048MG měniče.
 
@@ -17,7 +17,7 @@ Vytvořili jsme kompletní Home Assistant add-on pro monitoring MPP Solar PIP504
 ### 2. **Klíčové funkce**
 - ✅ Čtení dat z měniče přes USB HID (`/dev/hidraw0`)
 - ✅ MQTT publikování s auto-discovery pro Home Assistant
-- ✅ Real-time monitoring každých 30 sekund
+- ✅ Real-time monitoring každých 5 sekund (optimalizováno pro rychlost)
 - ✅ Kompletní sada senzorů a binary senzorů
 - ✅ Konfigurace přes Home Assistant UI
 
@@ -58,9 +58,10 @@ mpp-solar-addon/
 
 ## 📊 Aktuální funkční stav
 
-**Testováno dne 27.6.2025 v 19:24:**
+**Testováno dne 27.6.2025 v 19:32 (finální verze):**
 ```
-Published: PV=0.0W, Battery=51.9V/47%, Load=23W, Temp=42°C
+Published: PV=0.0W, Battery=51.9V/47%, Load=23W, Temp=41°C
+Interval: 5 sekund (6x rychlejší než původní)
 ```
 
 ### **Home Assistant entity:**
@@ -85,7 +86,7 @@ Published: PV=0.0W, Battery=51.9V/47%, Load=23W, Temp=42°C
 ### **2. Konfigurace:**
 ```yaml
 device: "/dev/hidraw0"
-interval: 30
+interval: 5              # Optimalizováno pro rychlé aktualizace
 mqtt_username: "mppclient"
 mqtt_password: "supersecret"
 mqtt_topic: "mpp_solar"
@@ -137,6 +138,8 @@ debug: true
 **URL:** https://github.com/9991119990/mpp-solar-ha-addon
 
 **Commits:**
+- 52cfa1d: ⚡ Speed up data updates - default 5s interval (FINÁLNÍ)
+- 4f5aea9: 📁 Complete project backup and documentation
 - 7c50293: Accept partial QPIGS responses (17+ values instead of 21)
 - c89211d: Improve QPIGS parsing for incomplete responses  
 - 6491332: Improve HID response reading for fragmented data
@@ -153,7 +156,8 @@ debug: true
 Máme funkční Home Assistant add-on který:
 - Čte real-time data z MPP Solar PIP5048MG měniče
 - Publikuje 9+ senzorů do Home Assistant přes MQTT
-- Funguje spolehlivě s 30-sekundovým intervalem
+- Funguje spolehlivě s 5-sekundovým intervalem (6x rychlejší!)
+- Je optimalizovaný pro rychlé aktualizace
 - Je připravený k produkčnímu nasazení
 
 **Projekt je připravený k dlouhodobému používání! 🌟**

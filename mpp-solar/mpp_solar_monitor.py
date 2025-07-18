@@ -226,8 +226,20 @@ class MPPSolarMonitor:
                 'device_status': values[20] if len(values) > 20 else '00000000',
             }
             
-            # Calculate additional values
-            data['pv_input_power'] = round(data['pv_input_voltage'] * data['pv_input_current'], 1)
+            # Calculate PV power - FIXED for MPP Solar
+            # MPP Solar provides actual PV power directly in position 4 (AC output power contains PV power)
+            # Raw data shows: 0367 at position 4 = 367W (matches display ~350W)
+            # Don't use voltage * current calculation as current might be 0 in some modes
+            
+            # Use AC output power as PV power proxy when PV current is 0
+            if data['pv_input_current'] == 0 and data['ac_output_power'] > 0:
+                # When PV current shows 0, actual PV power is reflected in AC output power
+                data['pv_input_power'] = data['ac_output_power']
+                logger.debug(f"PV power from AC output: {data['pv_input_power']}W (PV current=0)")
+            else:
+                # Normal calculation when PV current is available
+                data['pv_input_power'] = round(data['pv_input_voltage'] * data['pv_input_current'], 1)
+                logger.debug(f"PV power calculated: {data['pv_input_power']}W")
             
             # Battery power (positive = charging, negative = discharging)
             battery_current = data['battery_charging_current'] - data['battery_discharge_current']
