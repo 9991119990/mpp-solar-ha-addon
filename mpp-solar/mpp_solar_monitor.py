@@ -123,16 +123,27 @@ class MPPSolarMonitor:
                     response = os.read(fd, 200)
                     logger.debug(f"Received response: {len(response)} bytes")
                     
-                    # If response is short, try to read more
+                    # Read COMPLETE response to find the direct PV value like EASUN pos[19]
                     attempts = 0
-                    while len(response) < 110 and attempts < 10:
+                    while len(response) < 300 and attempts < 30:  # Much longer read
                         time.sleep(0.1)
-                        ready, _, _ = select.select([fd], [], [], 0.5)
+                        ready, _, _ = select.select([fd], [], [], 2.0)  # Longer timeout
                         if ready:
-                            more_data = os.read(fd, 200)
-                            response += more_data
-                            logger.debug(f"Read additional {len(more_data)} bytes, total: {len(response)}")
+                            more_data = os.read(fd, 1000)  # Read much more
+                            if more_data:
+                                response += more_data
+                                logger.debug(f"Read additional {len(more_data)} bytes, total: {len(response)}")
+                            else:
+                                logger.debug("No more data available")
+                                break
+                        else:
+                            if attempts % 10 == 0:
+                                logger.debug(f"No data ready, attempt {attempts}")
                         attempts += 1
+                    
+                    # Log COMPLETE response for analysis
+                    logger.info(f"🔍 COMPLETE RESPONSE ({len(response)} bytes): {response.hex()}")
+                    logger.info(f"🔍 COMPLETE TEXT: {response.decode('ascii', errors='ignore')}")
                     
                     if len(response) > 10:
                         logger.debug(f"Response hex: {response[:50].hex()}")
@@ -234,13 +245,13 @@ class MPPSolarMonitor:
             # MPP Solar PV power calculation - DEBUGGING
             # Current shows unrealistic values, need to find correct interpretation
             
-            # Debug all values to find actual PV power from display - FIND DIRECT VALUE
-            logger.info(f"DEBUG - SEARCH FOR DIRECT DISPLAY VALUE 626W")
-            logger.info(f"DEBUG - Complete raw values ({len(values)}): {values}")
+            # Debug all values to find EXACT DISPLAY VALUE like EASUN pos[19]
+            logger.info(f"🔍 SEARCH FOR DIRECT DISPLAY VALUE ~1160W (like EASUN pos[19])")
+            logger.info(f"🔍 Complete raw values ({len(values)}): {values}")
             
-            # Check ALL positions to find direct display value
-            logger.info(f"DEBUG - SEARCHING for 626 in all positions:")
-            for i in range(min(len(values), 30)):
+            # Search for EXACT display value 1160W in ALL positions  
+            logger.info(f"🔍 SEARCHING for 1160W in all positions:")
+            for i in range(min(len(values), 50)):  # Check more positions
                 val_str = str(values[i]) if i < len(values) else "N/A"
                 val_int = 0
                 try:
@@ -248,28 +259,27 @@ class MPPSolarMonitor:
                 except:
                     pass
                 
-                # Check if this position contains the display value
+                # Check if this position contains the EXACT display value
                 is_match = ""
-                if val_int == 626 or val_str == "626" or val_str == "0626":
-                    is_match = " ⭐ EXACT MATCH! ⭐"
-                elif 620 <= val_int <= 630:
-                    is_match = " 🎯 CLOSE MATCH!"
+                if val_int == 1160 or val_str == "1160" or val_str == "01160":
+                    is_match = " ⭐⭐⭐ EXACT DISPLAY MATCH! ⭐⭐⭐"
+                elif 1150 <= val_int <= 1170:
+                    is_match = " 🎯🎯 VERY CLOSE! 🎯🎯"
+                elif 1100 <= val_int <= 1200:
+                    is_match = " 🎯 CLOSE!"
                     
                 logger.info(f"  pos[{i}] = {val_str} ({val_int}){is_match}")
                 
-            # Check if display value might be combination of positions
-            logger.info(f"DEBUG - Checking combinations for 626:")
-            if len(values) >= 15:
-                for i in range(min(len(values)-1, 20)):
-                    for j in range(i+1, min(len(values), 21)):
-                        try:
-                            val1 = int(float(values[i]))
-                            val2 = int(float(values[j]))
-                            combo = val1 + val2
-                            if 620 <= combo <= 630:
-                                logger.info(f"  pos[{i}]({val1}) + pos[{j}]({val2}) = {combo} 🎯")
-                        except:
-                            pass
+            # Also check if it might be stored as fractional (like 116.0 for 1160W)
+            logger.info(f"🔍 Checking for fractional storage (116.0 = 1160W):")
+            for i in range(min(len(values), 30)):
+                val_str = str(values[i]) if i < len(values) else "N/A"
+                try:
+                    val_float = float(val_str)
+                    if 115.0 <= val_float <= 117.0:  # 1150-1170W as 115.0-117.0
+                        logger.info(f"  pos[{i}] = {val_str} → {val_float*10}W 🎯🎯 FRACTIONAL MATCH!")
+                except:
+                    pass
             
             # MPP Solar PV power calculation - DIRECT COMBINATION FOUND!
             # Pattern discovered: PV power = (pos[7] + pos[13]) × 2
