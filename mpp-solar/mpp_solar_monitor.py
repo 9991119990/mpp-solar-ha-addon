@@ -234,29 +234,37 @@ class MPPSolarMonitor:
             # MPP Solar PV power calculation - DEBUGGING
             # Current shows unrealistic values, need to find correct interpretation
             
-            # Debug all possible power values
-            logger.debug(f"Raw values: {values}")
-            if len(values) >= 16:
-                possible_powers = [
-                    int(values[4]),   # AC output power: 45W
-                    int(values[5]),   # AC apparent power: 31W
-                    int(values[7]),   # Bus voltage: 400W  
-                    round(data['pv_input_voltage'] * data['pv_input_current'], 1),  # Calculated: 3867W
-                    round(data['pv_input_voltage'] * data['pv_input_current'] / 10, 1),  # Divided by 10: 386W
-                    round(data['pv_input_voltage'] * data['pv_input_current'] / 4, 1),   # Divided by 4: 966W
-                ]
-                logger.debug(f"Possible PV powers: {possible_powers}")
+            # Debug all values to find actual PV power from display
+            logger.info(f"DEBUG - Complete raw values ({len(values)}): {values}")
             
-            # MPP Solar PV power calculation - ADAPTIVE CORRECTION
-            # Analysis shows correction factor varies with power level:
-            # Low power (~1kW): factor ~2.9
-            # High power (~2kW): factor ~3.4
-            # Use adaptive formula based on power level
+            # Check extended positions if available
+            if len(values) >= 20:
+                logger.info(f"DEBUG - Extended values: pos[17]={values[17]}, pos[18]={values[18]}, pos[19]={values[19]}")
+                if len(values) >= 21:
+                    logger.info(f"DEBUG - More values: pos[20]={values[20]}")
+                    
+            # Log all key positions for analysis
+            logger.info(f"DEBUG - Key positions:")
+            logger.info(f"  pos[4] AC output power: {values[4]}")
+            logger.info(f"  pos[5] AC apparent power: {values[5]}")  
+            logger.info(f"  pos[6] Load percent: {values[6]}")
+            logger.info(f"  pos[7] Bus voltage: {values[7]}")
+            logger.info(f"  pos[12] PV current: {values[12]}")
+            logger.info(f"  pos[13] PV voltage: {values[13]}")
+            
+            # MPP Solar PV power calculation - COMPREHENSIVE FIX
+            # When PV current is 0, actual PV power is in position 5 (AC apparent power field)
+            # When PV current > 0, use adaptive correction factor
             
             raw_power = data['pv_input_voltage'] * data['pv_input_current']
-            if raw_power > 1000:  # If calculated power is high, apply adaptive correction
-                # Adaptive correction factor: 2.9 + (raw_power - 3000) * 0.0001
-                # This scales the factor based on raw power level
+            
+            # Special case: When PV current is 0, use AC apparent power as PV power
+            if data['pv_input_current'] == 0:
+                # Position 5 contains actual PV power when current reads 0
+                data['pv_input_power'] = data['ac_output_apparent_power']
+                logger.debug(f"PV power from position 5 (PV current=0): {data['pv_input_power']}W")
+            elif raw_power > 1000:  # If calculated power is high, apply adaptive correction
+                # Adaptive correction factor based on power level
                 if raw_power > 6000:  # High power range
                     correction_factor = 3.4
                 elif raw_power > 4000:  # Medium power range  
@@ -267,6 +275,7 @@ class MPPSolarMonitor:
                 data['pv_input_power'] = round(raw_power / correction_factor, 1)
                 logger.debug(f"PV power (corrected): {data['pv_input_power']}W (raw: {raw_power}W, factor: {correction_factor})")
             else:
+                # Low power, use raw calculation
                 data['pv_input_power'] = round(raw_power, 1)
                 logger.debug(f"PV power (normal): {data['pv_input_power']}W")
             
