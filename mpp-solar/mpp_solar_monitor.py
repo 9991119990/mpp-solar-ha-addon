@@ -234,35 +234,42 @@ class MPPSolarMonitor:
             # MPP Solar PV power calculation - DEBUGGING
             # Current shows unrealistic values, need to find correct interpretation
             
-            # Debug all values to find actual PV power from display
+            # Debug all values to find actual PV power from display - FIND DIRECT VALUE
+            logger.info(f"DEBUG - SEARCH FOR DIRECT DISPLAY VALUE 626W")
             logger.info(f"DEBUG - Complete raw values ({len(values)}): {values}")
             
-            # Check ALL positions to find the PV power
-            logger.info(f"DEBUG - ALL positions analysis:")
-            for i in range(min(len(values), 25)):
-                logger.info(f"  pos[{i}] = {values[i]}")
+            # Check ALL positions to find direct display value
+            logger.info(f"DEBUG - SEARCHING for 626 in all positions:")
+            for i in range(min(len(values), 30)):
+                val_str = str(values[i]) if i < len(values) else "N/A"
+                val_int = 0
+                try:
+                    val_int = int(float(val_str))
+                except:
+                    pass
                 
-            # Try to find patterns - maybe PV power is calculated from multiple values
-            if len(values) >= 10:
-                # AC output + something = PV?
-                test1 = int(values[4]) + int(values[5])  # AC output + apparent
-                test2 = int(values[4]) + int(values[9])  # AC output + batt charge current
-                test3 = int(values[5]) * 3  # Apparent power * 3?
-                test4 = int(values[5]) * 4  # Apparent power * 4?
-                logger.info(f"DEBUG - Possible calculations:")
-                logger.info(f"  AC({values[4]}) + Apparent({values[5]}) = {test1}")
-                logger.info(f"  AC({values[4]}) + BattCharge({values[9]}) = {test2}")
-                logger.info(f"  Apparent({values[5]}) * 3 = {test3}")
-                logger.info(f"  Apparent({values[5]}) * 4 = {test4}")
+                # Check if this position contains the display value
+                is_match = ""
+                if val_int == 626 or val_str == "626" or val_str == "0626":
+                    is_match = " ⭐ EXACT MATCH! ⭐"
+                elif 620 <= val_int <= 630:
+                    is_match = " 🎯 CLOSE MATCH!"
                     
-            # Log all key positions for analysis
-            logger.info(f"DEBUG - Key positions:")
-            logger.info(f"  pos[4] AC output power: {values[4]}")
-            logger.info(f"  pos[5] AC apparent power: {values[5]}")  
-            logger.info(f"  pos[6] Load percent: {values[6]}")
-            logger.info(f"  pos[7] Bus voltage: {values[7]}")
-            logger.info(f"  pos[12] PV current: {values[12]}")
-            logger.info(f"  pos[13] PV voltage: {values[13]}")
+                logger.info(f"  pos[{i}] = {val_str} ({val_int}){is_match}")
+                
+            # Check if display value might be combination of positions
+            logger.info(f"DEBUG - Checking combinations for 626:")
+            if len(values) >= 15:
+                for i in range(min(len(values)-1, 20)):
+                    for j in range(i+1, min(len(values), 21)):
+                        try:
+                            val1 = int(float(values[i]))
+                            val2 = int(float(values[j]))
+                            combo = val1 + val2
+                            if 620 <= combo <= 630:
+                                logger.info(f"  pos[{i}]({val1}) + pos[{j}]({val2}) = {combo} 🎯")
+                        except:
+                            pass
             
             # MPP Solar PV power calculation - ADAPTIVE FACTOR FIX
             # Analysis showed PV power = position 5 * adaptive factor based on power level
