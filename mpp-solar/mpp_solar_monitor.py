@@ -264,32 +264,13 @@ class MPPSolarMonitor:
             logger.info(f"  pos[12] PV current: {values[12]}")
             logger.info(f"  pos[13] PV voltage: {values[13]}")
             
-            # MPP Solar PV power calculation - COMPREHENSIVE FIX
-            # When PV current is 0, actual PV power is in position 5 (AC apparent power field)
-            # When PV current > 0, use adaptive correction factor
+            # MPP Solar PV power calculation - FINAL FIX
+            # Analysis showed actual PV power = position 5 (AC apparent power) * 4
+            # This matches display values: 31*4=124, 32*4=128, 34*4=136, 35*4=140 (~130W display)
             
-            raw_power = data['pv_input_voltage'] * data['pv_input_current']
-            
-            # Special case: When PV current is 0, use AC apparent power as PV power
-            if data['pv_input_current'] == 0:
-                # Position 5 contains actual PV power when current reads 0
-                data['pv_input_power'] = data['ac_output_apparent_power']
-                logger.debug(f"PV power from position 5 (PV current=0): {data['pv_input_power']}W")
-            elif raw_power > 1000:  # If calculated power is high, apply adaptive correction
-                # Adaptive correction factor based on power level
-                if raw_power > 6000:  # High power range
-                    correction_factor = 3.4
-                elif raw_power > 4000:  # Medium power range  
-                    correction_factor = 3.0
-                else:  # Low power range
-                    correction_factor = 2.9
-                
-                data['pv_input_power'] = round(raw_power / correction_factor, 1)
-                logger.debug(f"PV power (corrected): {data['pv_input_power']}W (raw: {raw_power}W, factor: {correction_factor})")
-            else:
-                # Low power, use raw calculation
-                data['pv_input_power'] = round(raw_power, 1)
-                logger.debug(f"PV power (normal): {data['pv_input_power']}W")
+            # Direct calculation from position 5 (AC apparent power) with factor 4
+            data['pv_input_power'] = data['ac_output_apparent_power'] * 4
+            logger.debug(f"PV power (final): {data['pv_input_power']}W (pos[5]={data['ac_output_apparent_power']} * 4)")
             
             # Battery power (positive = charging, negative = discharging)
             battery_current = data['battery_charging_current'] - data['battery_discharge_current']
