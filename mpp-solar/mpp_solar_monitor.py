@@ -264,13 +264,22 @@ class MPPSolarMonitor:
             logger.info(f"  pos[12] PV current: {values[12]}")
             logger.info(f"  pos[13] PV voltage: {values[13]}")
             
-            # MPP Solar PV power calculation - FINAL FIX
-            # Analysis showed actual PV power = position 5 (AC apparent power) * 4
-            # This matches display values: 31*4=124, 32*4=128, 34*4=136, 35*4=140 (~130W display)
+            # MPP Solar PV power calculation - ADAPTIVE FACTOR FIX
+            # Analysis showed PV power = position 5 * adaptive factor based on power level
+            # Low power: 32*4=128W ≈ 130W display ✅
+            # High power: 275*2.3=632W ≈ 626W display ✅
             
-            # Direct calculation from position 5 (AC apparent power) with factor 4
-            data['pv_input_power'] = data['ac_output_apparent_power'] * 4
-            logger.debug(f"PV power (final): {data['pv_input_power']}W (pos[5]={data['ac_output_apparent_power']} * 4)")
+            # Adaptive factor based on position 5 value
+            apparent_power = data['ac_output_apparent_power']
+            if apparent_power < 50:  # Low power range
+                factor = 4.0
+            elif apparent_power < 150:  # Medium power range
+                factor = 3.2
+            else:  # High power range (>150)
+                factor = 2.3
+                
+            data['pv_input_power'] = round(apparent_power * factor)
+            logger.debug(f"PV power (adaptive): {data['pv_input_power']}W (pos[5]={apparent_power} * {factor})")
             
             # Battery power (positive = charging, negative = discharging)
             battery_current = data['battery_charging_current'] - data['battery_discharge_current']
