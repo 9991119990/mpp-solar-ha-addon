@@ -237,11 +237,23 @@ class MPPSolarMonitor:
             # Debug all values to find actual PV power from display
             logger.info(f"DEBUG - Complete raw values ({len(values)}): {values}")
             
-            # Check extended positions if available
-            if len(values) >= 20:
-                logger.info(f"DEBUG - Extended values: pos[17]={values[17]}, pos[18]={values[18]}, pos[19]={values[19]}")
-                if len(values) >= 21:
-                    logger.info(f"DEBUG - More values: pos[20]={values[20]}")
+            # Check ALL positions to find the PV power
+            logger.info(f"DEBUG - ALL positions analysis:")
+            for i in range(min(len(values), 25)):
+                logger.info(f"  pos[{i}] = {values[i]}")
+                
+            # Try to find patterns - maybe PV power is calculated from multiple values
+            if len(values) >= 10:
+                # AC output + something = PV?
+                test1 = int(values[4]) + int(values[5])  # AC output + apparent
+                test2 = int(values[4]) + int(values[9])  # AC output + batt charge current
+                test3 = int(values[5]) * 3  # Apparent power * 3?
+                test4 = int(values[5]) * 4  # Apparent power * 4?
+                logger.info(f"DEBUG - Possible calculations:")
+                logger.info(f"  AC({values[4]}) + Apparent({values[5]}) = {test1}")
+                logger.info(f"  AC({values[4]}) + BattCharge({values[9]}) = {test2}")
+                logger.info(f"  Apparent({values[5]}) * 3 = {test3}")
+                logger.info(f"  Apparent({values[5]}) * 4 = {test4}")
                     
             # Log all key positions for analysis
             logger.info(f"DEBUG - Key positions:")
