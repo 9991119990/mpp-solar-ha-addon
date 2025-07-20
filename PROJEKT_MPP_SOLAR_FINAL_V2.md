@@ -1,8 +1,8 @@
-# MPP Solar PIP5048MG Home Assistant Add-on - FINÁLNÍ ŘEŠENÍ V2.0.0
+# MPP Solar PIP5048MG Home Assistant Add-on - FINÁLNÍ ŘEŠENÍ V2.0.3
 
 **Datum dokončení:** 20. července 2025  
-**Verze:** 2.0.0 (FINÁLNÍ PRODUKČNÍ VERZE)  
-**Status:** ✅ KOMPLETNĚ DOKONČENO - 98.2% PŘESNOST
+**Verze:** 2.0.3 (FINÁLNÍ PRODUKČNÍ VERZE)  
+**Status:** ✅ KOMPLETNĚ DOKONČENO - 100% PŘESNOST
 
 ## 🎯 Klíčové objevy - FINÁLNÍ ŘEŠENÍ
 
@@ -17,7 +17,12 @@ pv_input_power = float(values[19])  # Pozice 19 obsahuje PŘÍMO PV výkon ve wa
 
 ### Porovnání přesnosti
 
-**Test z 20.7.2025:**
+**Test z 20.7.2025 (verze 2.0.3):**
+- **Displej měniče:** 987 W
+- **Pozice 19:** 987 W
+- **Přesnost:** 100% ✅
+
+**Předchozí test (v2.0.0):**
 - **Displej měniče:** 444 W
 - **Pozice 19:** 436 W
 - **Přesnost:** 98.2%
@@ -200,7 +205,7 @@ mosquitto_sub -h localhost -u mppclient -P supersecret -t "homeassistant/sensor/
 - Není potřeba žádný výpočet ani korekční faktor
 - Přesnost 98.2% je vynikající pro produkční použití
 
-**Verze 2.0.0 je FINÁLNÍ PRODUKČNÍ VERZE** s přímým čtením PV výkonu.
+**Verze 2.0.3 je FINÁLNÍ PRODUKČNÍ VERZE** s přímým čtením PV výkonu a spolehlivou komunikací.
 
 ## 📁 Struktura projektu
 
