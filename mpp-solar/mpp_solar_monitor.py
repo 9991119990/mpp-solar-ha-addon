@@ -114,22 +114,22 @@ class MPPSolarMonitor:
                 logger.debug(f"Sending QPIGS command: {cmd.hex()}")
                 os.write(fd, cmd)
                 
-                # Wait for response with timeout (optimized)
+                # Wait for response with balanced timeout
                 logger.debug("Waiting for response...")
-                ready, _, _ = select.select([fd], [], [], 2.0)  # Reduced timeout
+                ready, _, _ = select.select([fd], [], [], 3.0)  # Balanced timeout
                 
                 if ready:
                     logger.debug("Response available, reading...")
-                    response = os.read(fd, 112)  # Read standard response size
+                    response = os.read(fd, 150)  # Larger initial read
                     logger.debug(f"Received response: {len(response)} bytes")
                     
-                    # Read additional fragments if needed (max 3 attempts)
+                    # Read additional fragments if needed (max 8 attempts)
                     attempts = 0
-                    while len(response) < 110 and attempts < 3:
-                        time.sleep(0.05)  # Shorter delay
-                        ready, _, _ = select.select([fd], [], [], 0.5)  # Much shorter timeout
+                    while len(response) < 110 and attempts < 8:
+                        time.sleep(0.1)  # Balanced delay
+                        ready, _, _ = select.select([fd], [], [], 1.0)  # Balanced timeout
                         if ready:
-                            more_data = os.read(fd, 50)
+                            more_data = os.read(fd, 100)
                             if more_data:
                                 response += more_data
                                 logger.debug(f"Read additional {len(more_data)} bytes, total: {len(response)}")

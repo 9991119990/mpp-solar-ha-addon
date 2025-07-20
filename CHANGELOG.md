@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.0.2] - 2025-07-20 - COMMUNICATION FIX
+### 🔧 Fixed
+- **Communication issues from v2.0.1** - response fragments not being read completely
+- Balanced timeouts: 3s initial, 1s for fragments (was too aggressive in v2.0.1)
+- Increased read attempts to 8 (was only 3)
+- Larger initial buffer (150 bytes vs 112)
+- Still faster than v2.0.0 but reliable communication
+
+### Technical Changes
+- Initial timeout: 3s (balanced from 2s)
+- Fragment timeout: 1s (from 0.5s)
+- Read attempts: 8 (from 3)
+- Fragment delay: 0.1s (from 0.05s)
+
 ## [2.0.1] - 2025-07-20 - PERFORMANCE OPTIMIZED VERSION
 ### 🚀 Performance Improvements
 - **15-30s loading time reduced to ~2-3s**
