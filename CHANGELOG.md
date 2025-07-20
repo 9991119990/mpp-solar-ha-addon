@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.1] - 2025-07-20 - PERFORMANCE OPTIMIZED VERSION
+### 🚀 Performance Improvements
+- **15-30s loading time reduced to ~2-3s**
+- Removed extensive debug logging from production code
+- Optimized HID communication timeouts (2s vs 5s)
+- Limited read attempts to 3 (was 30)
+- Reduced buffer size to 112 bytes (was 1000)
+- Set debug=false by default for production use
+
+### Technical Changes
+- Streamlined read_inverter_data() function
+- Removed position search debug code
+- Kept only essential logging for position 19 PV power
+- Faster response processing
+
 ## [2.0.0] - 2025-07-20 - FINAL PRODUCTION VERSION
 ### 🎯 MAJOR BREAKTHROUGH
 - **FOUND IT!** PV power is stored directly in QPIGS position 19

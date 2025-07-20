@@ -114,36 +114,28 @@ class MPPSolarMonitor:
                 logger.debug(f"Sending QPIGS command: {cmd.hex()}")
                 os.write(fd, cmd)
                 
-                # Wait for response with timeout
+                # Wait for response with timeout (optimized)
                 logger.debug("Waiting for response...")
-                ready, _, _ = select.select([fd], [], [], 3.0)  # 3 second timeout
+                ready, _, _ = select.select([fd], [], [], 2.0)  # Reduced timeout
                 
                 if ready:
                     logger.debug("Response available, reading...")
-                    response = os.read(fd, 200)
+                    response = os.read(fd, 112)  # Read standard response size
                     logger.debug(f"Received response: {len(response)} bytes")
                     
-                    # Read COMPLETE response to find the direct PV value like EASUN pos[19]
+                    # Read additional fragments if needed (max 3 attempts)
                     attempts = 0
-                    while len(response) < 300 and attempts < 30:  # Much longer read
-                        time.sleep(0.1)
-                        ready, _, _ = select.select([fd], [], [], 2.0)  # Longer timeout
+                    while len(response) < 110 and attempts < 3:
+                        time.sleep(0.05)  # Shorter delay
+                        ready, _, _ = select.select([fd], [], [], 0.5)  # Much shorter timeout
                         if ready:
-                            more_data = os.read(fd, 1000)  # Read much more
+                            more_data = os.read(fd, 50)
                             if more_data:
                                 response += more_data
                                 logger.debug(f"Read additional {len(more_data)} bytes, total: {len(response)}")
                             else:
-                                logger.debug("No more data available")
                                 break
-                        else:
-                            if attempts % 10 == 0:
-                                logger.debug(f"No data ready, attempt {attempts}")
                         attempts += 1
-                    
-                    # Log COMPLETE response for analysis
-                    logger.info(f"🔍 COMPLETE RESPONSE ({len(response)} bytes): {response.hex()}")
-                    logger.info(f"🔍 COMPLETE TEXT: {response.decode('ascii', errors='ignore')}")
                     
                     if len(response) > 10:
                         logger.debug(f"Response hex: {response[:50].hex()}")
@@ -153,10 +145,6 @@ class MPPSolarMonitor:
                         logger.debug(f"Decoded text: {text[:100]}")
                         
                         if text.startswith('('):
-                            # Check if we have complete response (should end with \r)
-                            if ')' not in text and len(response) < 110:
-                                logger.warning(f"Incomplete response, may need more data: {text}")
-                            
                             # Find closing parenthesis, or use end of data
                             end_pos = text.find(')')
                             if end_pos > 0:
@@ -164,17 +152,15 @@ class MPPSolarMonitor:
                             else:
                                 # Try without closing parenthesis for incomplete data
                                 data_str = text[1:].rstrip('\r\n')
-                                logger.debug(f"Using data without closing parenthesis: {data_str}")
                             
-                                values = data_str.split()
-                                logger.debug(f"Parsed values count: {len(values)}")
-                                
-                                if len(values) >= 17:  # Relax requirement for partial data
-                                    logger.info("Successfully parsed inverter data")
-                                    return self.parse_qpigs(values)
-                                else:
-                                    logger.warning(f"Invalid response length: {len(values)} (need >=21)")
-                                    logger.warning(f"Values: {values}")
+                            values = data_str.split()
+                            logger.debug(f"Parsed values count: {len(values)}")
+                            
+                            if len(values) >= 17:  # Minimum required values
+                                logger.debug("Successfully parsed inverter data")
+                                return self.parse_qpigs(values)
+                            else:
+                                logger.warning(f"Invalid response length: {len(values)} (need >=17)")
                         else:
                             logger.warning(f"Invalid response format: {text[:50]}")
                     else:
@@ -237,61 +223,13 @@ class MPPSolarMonitor:
                 'device_status': values[20] if len(values) > 20 else '00000000',
             }
             
-            # Calculate PV power - FIXED for MPP Solar
-            # MPP Solar provides actual PV power directly in position 4 (AC output power contains PV power)
-            # Raw data shows: 0367 at position 4 = 367W (matches display ~350W)
-            # Don't use voltage * current calculation as current might be 0 in some modes
-            
-            # MPP Solar PV power calculation - DEBUGGING
-            # Current shows unrealistic values, need to find correct interpretation
-            
-            # Debug all values to find EXACT DISPLAY VALUE like EASUN pos[19]
-            logger.info(f"🔍 SEARCH FOR DIRECT DISPLAY VALUE ~1160W (like EASUN pos[19])")
-            logger.info(f"🔍 Complete raw values ({len(values)}): {values}")
-            
-            # Search for EXACT display value 1160W in ALL positions  
-            logger.info(f"🔍 SEARCHING for 1160W in all positions:")
-            for i in range(min(len(values), 50)):  # Check more positions
-                val_str = str(values[i]) if i < len(values) else "N/A"
-                val_int = 0
-                try:
-                    val_int = int(float(val_str))
-                except:
-                    pass
-                
-                # Check if this position contains the EXACT display value
-                is_match = ""
-                if val_int == 1160 or val_str == "1160" or val_str == "01160":
-                    is_match = " ⭐⭐⭐ EXACT DISPLAY MATCH! ⭐⭐⭐"
-                elif 1150 <= val_int <= 1170:
-                    is_match = " 🎯🎯 VERY CLOSE! 🎯🎯"
-                elif 1100 <= val_int <= 1200:
-                    is_match = " 🎯 CLOSE!"
-                    
-                logger.info(f"  pos[{i}] = {val_str} ({val_int}){is_match}")
-                
-            # Also check if it might be stored as fractional (like 116.0 for 1160W)
-            logger.info(f"🔍 Checking for fractional storage (116.0 = 1160W):")
-            for i in range(min(len(values), 30)):
-                val_str = str(values[i]) if i < len(values) else "N/A"
-                try:
-                    val_float = float(val_str)
-                    if 115.0 <= val_float <= 117.0:  # 1150-1170W as 115.0-117.0
-                        logger.info(f"  pos[{i}] = {val_str} → {val_float*10}W 🎯🎯 FRACTIONAL MATCH!")
-                except:
-                    pass
-            
-            # MPP Solar PV power - DIRECT VALUE IN POSITION 19 - SAME AS EASUN!
-            # FOUND IT! Display: 444W, pos[19] = 436W (98.2% accuracy!)
-            # Just like EASUN, MPP Solar stores actual PV power directly in position 19!
-            
-            # Direct reading from position 19 - NO CALCULATIONS!
+            # MPP Solar PV power - DIRECT VALUE IN POSITION 19 (FINAL VERSION 2.0.0)
+            # Direct reading from position 19 - same as EASUN inverters
             if len(values) > 19:
                 try:
                     data['pv_input_power'] = int(values[19])
-                    logger.info(f"⭐⭐⭐ DIRECT PV POWER FROM pos[19]: {data['pv_input_power']}W ⭐⭐⭐")
+                    logger.debug(f"PV power from pos[19]: {data['pv_input_power']}W")
                 except:
-                    # Fallback if position 19 not available
                     data['pv_input_power'] = 0
                     logger.warning("Position 19 not available, using 0W")
             else:
