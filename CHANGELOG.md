@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.3] - 2025-07-20 - RELIABLE COMMUNICATION RESTORED
+### 🔧 Fixed
+- **Restored proven v2.0.0 communication method** that was working
+- Fragment reading: 15 attempts (vs 30 in v2.0.0) for speed
+- Buffer size: 500 bytes for fragments (increased from 100)
+- Timeout: 1.5s for fragments (balanced)
+- Complete response validation restored
+
+### Technical Changes
+- Restored robust read loop from v2.0.0
+- 15 attempts instead of 30 (faster than v2.0.0)
+- 500-byte fragment buffer (vs 100 in v2.0.1/2)
+- Proper incomplete response handling
+- Position 19 PV power reading preserved
+
 ## [2.0.2] - 2025-07-20 - COMMUNICATION FIX
 ### 🔧 Fixed
 - **Communication issues from v2.0.1** - response fragments not being read completely

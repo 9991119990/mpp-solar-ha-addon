@@ -114,27 +114,30 @@ class MPPSolarMonitor:
                 logger.debug(f"Sending QPIGS command: {cmd.hex()}")
                 os.write(fd, cmd)
                 
-                # Wait for response with balanced timeout
+                # Wait for response (restored v2.0.0 working method)
                 logger.debug("Waiting for response...")
-                ready, _, _ = select.select([fd], [], [], 3.0)  # Balanced timeout
+                ready, _, _ = select.select([fd], [], [], 3.0)
                 
                 if ready:
                     logger.debug("Response available, reading...")
-                    response = os.read(fd, 150)  # Larger initial read
+                    response = os.read(fd, 200)
                     logger.debug(f"Received response: {len(response)} bytes")
                     
-                    # Read additional fragments if needed (max 8 attempts)
+                    # Read complete response (restored v2.0.0 proven method)
                     attempts = 0
-                    while len(response) < 110 and attempts < 8:
-                        time.sleep(0.1)  # Balanced delay
-                        ready, _, _ = select.select([fd], [], [], 1.0)  # Balanced timeout
+                    while len(response) < 300 and attempts < 15:  # Reduced from 30 to 15 for speed
+                        time.sleep(0.1)
+                        ready, _, _ = select.select([fd], [], [], 1.5)  # Shorter than 2.0s but longer than 1.0s
                         if ready:
-                            more_data = os.read(fd, 100)
+                            more_data = os.read(fd, 500)  # Increased buffer
                             if more_data:
                                 response += more_data
                                 logger.debug(f"Read additional {len(more_data)} bytes, total: {len(response)}")
                             else:
                                 break
+                        else:
+                            if attempts % 5 == 0:  # Less frequent logging
+                                logger.debug(f"No data ready, attempt {attempts}")
                         attempts += 1
                     
                     if len(response) > 10:
@@ -145,6 +148,10 @@ class MPPSolarMonitor:
                         logger.debug(f"Decoded text: {text[:100]}")
                         
                         if text.startswith('('):
+                            # Check if we have complete response (should end with \r)
+                            if ')' not in text and len(response) < 110:
+                                logger.warning(f"Incomplete response, may need more data: {text}")
+                            
                             # Find closing parenthesis, or use end of data
                             end_pos = text.find(')')
                             if end_pos > 0:
@@ -152,15 +159,17 @@ class MPPSolarMonitor:
                             else:
                                 # Try without closing parenthesis for incomplete data
                                 data_str = text[1:].rstrip('\r\n')
+                                logger.debug(f"Using data without closing parenthesis: {data_str}")
                             
                             values = data_str.split()
                             logger.debug(f"Parsed values count: {len(values)}")
                             
-                            if len(values) >= 17:  # Minimum required values
+                            if len(values) >= 17:  # Relax requirement for partial data (restored from v2.0.0)
                                 logger.debug("Successfully parsed inverter data")
                                 return self.parse_qpigs(values)
                             else:
                                 logger.warning(f"Invalid response length: {len(values)} (need >=17)")
+                                logger.warning(f"Values: {values}")
                         else:
                             logger.warning(f"Invalid response format: {text[:50]}")
                     else:
