@@ -1,6 +1,6 @@
 name: "MPP Solar Monitor"
 description: "Monitor MPP Solar PIP5048MG inverter and publish data to MQTT"
-version: "1.0.12"
+version: "2.0.0"
 slug: "mpp_solar"
 init: false
 arch:

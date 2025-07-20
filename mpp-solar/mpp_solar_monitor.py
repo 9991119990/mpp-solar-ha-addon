@@ -281,19 +281,22 @@ class MPPSolarMonitor:
                 except:
                     pass
             
-            # MPP Solar PV power calculation - DIRECT COMBINATION FOUND!
-            # Pattern discovered: PV power = (pos[7] + pos[13]) × 2
-            # Display: 1160W, pos[7](361) + pos[13](259) = 620 → 620×2 = 1240W (93% accuracy!)
-            # This is the direct relationship - Bus voltage + PV voltage combined!
+            # MPP Solar PV power - DIRECT VALUE IN POSITION 19 - SAME AS EASUN!
+            # FOUND IT! Display: 444W, pos[19] = 436W (98.2% accuracy!)
+            # Just like EASUN, MPP Solar stores actual PV power directly in position 19!
             
-            # Direct calculation: PV power = (Bus voltage + PV voltage) × 2
-            bus_voltage = data['bus_voltage'] 
-            pv_voltage = data['pv_input_voltage']
-            combined = bus_voltage + pv_voltage
-            data['pv_input_power'] = round(combined * 2)
-            
-            logger.info(f"🎯 FOUND: PV={data['pv_input_power']}W from (pos[7]({bus_voltage}) + pos[13]({pv_voltage})) × 2 = {combined}×2")
-            logger.debug(f"PV power (direct): {data['pv_input_power']}W = ({bus_voltage} + {pv_voltage}) × 2")
+            # Direct reading from position 19 - NO CALCULATIONS!
+            if len(values) > 19:
+                try:
+                    data['pv_input_power'] = int(values[19])
+                    logger.info(f"⭐⭐⭐ DIRECT PV POWER FROM pos[19]: {data['pv_input_power']}W ⭐⭐⭐")
+                except:
+                    # Fallback if position 19 not available
+                    data['pv_input_power'] = 0
+                    logger.warning("Position 19 not available, using 0W")
+            else:
+                data['pv_input_power'] = 0
+                logger.warning(f"Not enough values ({len(values)}), need at least 20")
             
             # Battery power (positive = charging, negative = discharging)
             battery_current = data['battery_charging_current'] - data['battery_discharge_current']
