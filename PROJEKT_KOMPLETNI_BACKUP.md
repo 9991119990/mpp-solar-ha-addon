@@ -45,7 +45,7 @@ Vytvořili jsme kompletní Home Assistant add-on pro monitoring MPP Solar PIP504
 ```
 mpp-solar-addon/
 ├── repository.yaml
-└── mpp-solar/
+└── mpp_solar/
     ├── config.yaml          # Konfigurace add-onu
     ├── build.yaml           # Multi-arch build
     ├── Dockerfile           # Container definice
