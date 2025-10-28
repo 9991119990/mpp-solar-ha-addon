@@ -25,7 +25,7 @@ This add-on monitors MPP Solar PIP5048MG inverters and publishes data to Home As
 
 ### Optional Settings
 
-- **interval**: Update interval in seconds (default: 30, min: 10, max: 300)
+- **interval**: Update interval in seconds (default: 5, min: 2, max: 300)
 - **mqtt_port**: MQTT broker port (default: 1883)
 - **mqtt_username**: MQTT username (leave empty if not required)
 - **mqtt_password**: MQTT password (leave empty if not required)
