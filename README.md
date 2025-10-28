@@ -1,4 +1,4 @@
-# MPP Solar Home Assistant Add-on v2.0.3
+# MPP Solar Home Assistant Add-on v2.0.5
 
 Monitor your MPP Solar PIP5048MG inverter with **DIRECT display values** - no calculations!
 
@@ -34,7 +34,7 @@ mqtt_host: core-mosquitto
 mqtt_port: 1883
 mqtt_username: your_mqtt_user
 mqtt_password: your_mqtt_password
-update_interval: 5
+interval: 5
 ```
 
 ## Available Sensors
@@ -47,6 +47,14 @@ update_interval: 5
 - And more...
 
 ## Changelog
+
+### v2.0.5 - Stability and HA compliance
+- Fixed battery discharge current index (PI30 mapping)
+- Paho MQTT compatibility: forced V1 callback API with MQTTv311
+- Availability/discovery published with QoS 1 and retain
+- Timestamp is timezone-aware ISO8601
+- Docker image smaller: removed unnecessary build deps, copy only needed files
+- Reduced add-on privileges (no full_access, no SYS_ADMIN)
 
 ### v2.0.3 - FINAL PRODUCTION VERSION ✅
 - **PROVEN RELIABLE**: Direct PV power from position 19 

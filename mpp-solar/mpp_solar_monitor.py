@@ -9,7 +9,7 @@ import sys
 import json
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 # Setup logging
@@ -125,7 +125,7 @@ class MPPSolarMonitor:
                     
                     # Read complete response (restored v2.0.0 proven method)
                     attempts = 0
-                    while len(response) < 300 and attempts < 15:  # Reduced from 30 to 15 for speed
+                    while len(response) < 300 and (b'\r' not in response) and attempts < 15:  # stop when CR received
                         time.sleep(0.1)
                         ready, _, _ = select.select([fd], [], [], 1.5)  # Shorter than 2.0s but longer than 1.0s
                         if ready:
@@ -148,23 +148,17 @@ class MPPSolarMonitor:
                         logger.debug(f"Decoded text: {text[:100]}")
                         
                         if text.startswith('('):
-                            # Check if we have complete response (should end with \r)
-                            if ')' not in text and len(response) < 110:
-                                logger.warning(f"Incomplete response, may need more data: {text}")
-                            
-                            # Find closing parenthesis, or use end of data
+                            # Require a complete frame ending with ')' to avoid publishing partial data
                             end_pos = text.find(')')
-                            if end_pos > 0:
-                                data_str = text[1:end_pos]
-                            else:
-                                # Try without closing parenthesis for incomplete data
-                                data_str = text[1:].rstrip('\r\n')
-                                logger.debug(f"Using data without closing parenthesis: {data_str}")
-                            
+                            if end_pos <= 0:
+                                logger.warning("Incomplete response (missing ')'), skipping this cycle")
+                                return None
+
+                            data_str = text[1:end_pos]
                             values = data_str.split()
                             logger.debug(f"Parsed values count: {len(values)}")
-                            
-                            if len(values) >= 17:  # Relax requirement for partial data (restored from v2.0.0)
+
+                            if len(values) >= 17:
                                 logger.debug("Successfully parsed inverter data")
                                 return self.parse_qpigs(values)
                             else:
@@ -195,10 +189,11 @@ class MPPSolarMonitor:
     def parse_qpigs(self, values):
         """Parse QPIGS response into dict"""
         try:
-            # Ensure minimum length and pad with defaults if needed
-            while len(values) < 21:
-                values.append('0')
-            
+            # Ensure minimum length; don't pad with artificial zeros
+            if len(values) < 17:
+                logger.warning(f"Too few values in QPIGS: {len(values)}")
+                return None
+
             data = {
                 # AC Input
                 'ac_input_voltage': float(values[0]),
@@ -207,8 +202,9 @@ class MPPSolarMonitor:
                 # AC Output
                 'ac_output_voltage': float(values[2]),
                 'ac_output_frequency': float(values[3]),
-                'ac_output_power': int(values[4]),
-                'ac_output_apparent_power': int(values[5]),
+                # Map according to PI30: [4]=apparent (VA), [5]=active (W)
+                'ac_output_apparent_power': int(values[4]),
+                'ac_output_power': int(values[5]),
                 'ac_output_load': int(values[6]),
                 
                 # Bus
@@ -218,7 +214,8 @@ class MPPSolarMonitor:
                 'battery_voltage': float(values[8]),
                 'battery_charging_current': int(values[9]) if len(values) > 9 else 0,
                 'battery_capacity': int(values[10]) if len(values) > 10 else 0,
-                'battery_discharge_current': int(values[16]) if len(values) > 16 else 0,
+                # PI30: index 15 = battery discharge current, 16 = status flags
+                'battery_discharge_current': int(values[15]) if len(values) > 15 else 0,
                 
                 # Temperature
                 'inverter_temperature': int(values[11]) if len(values) > 11 else 0,
@@ -228,8 +225,8 @@ class MPPSolarMonitor:
                 'pv_input_voltage': float(values[13]) if len(values) > 13 else 0.0,
                 'battery_scc_voltage': float(values[14]) if len(values) > 14 else 0.0,
                 
-                # Status
-                'device_status': values[20] if len(values) > 20 else '00000000',
+                # Status (PI30: status flags are typically at index 16)
+                'device_status': values[16] if len(values) > 16 else '00000000',
             }
             
             # MPP Solar PV power - DIRECT VALUE IN POSITION 19 (FINAL VERSION 2.0.0)
@@ -270,10 +267,18 @@ class MPPSolarMonitor:
     def setup_mqtt(self):
         """Setup MQTT connection"""
         try:
-            # Use MQTT v2 API
+            # Use MQTT v1 callback API for compatibility with current callbacks
             self.mqtt_client = mqtt.Client(
+                mqtt.CallbackAPIVersion.VERSION1,
                 client_id=f"mpp_solar_{os.getpid()}",
                 protocol=mqtt.MQTTv311
+            )
+            # Set LWT before connecting so broker marks offline on unexpected disconnects
+            self.mqtt_client.will_set(
+                f"{self.mqtt_topic}/availability",
+                "offline",
+                qos=1,
+                retain=True
             )
             
             # Set authentication if provided
@@ -286,16 +291,11 @@ class MPPSolarMonitor:
             def on_connect(client, userdata, flags, rc):
                 if rc == 0:
                     logger.info("Connected to MQTT broker")
-                    # Set last will
-                    client.will_set(
-                        f"{self.mqtt_topic}/availability",
-                        "offline",
-                        retain=True
-                    )
                     # Publish online status
                     client.publish(
                         f"{self.mqtt_topic}/availability",
                         "online",
+                        qos=1,
                         retain=True
                     )
                     # Publish discovery
@@ -335,7 +335,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "1.0.0"
+            "sw_version": "2.0.5"
         }
         
         # Sensor definitions
@@ -459,7 +459,7 @@ class MPPSolarMonitor:
             if "state_class" in sensor:
                 config["state_class"] = sensor["state_class"]
                 
-            self.mqtt_client.publish(topic, json.dumps(config), retain=True)
+            self.mqtt_client.publish(topic, json.dumps(config), qos=1, retain=True)
             logger.debug(f"Published discovery for {sensor['id']}")
             
         # Publish binary sensor discovery
@@ -478,7 +478,7 @@ class MPPSolarMonitor:
             if "device_class" in sensor:
                 config["device_class"] = sensor["device_class"]
                 
-            self.mqtt_client.publish(topic, json.dumps(config), retain=True)
+            self.mqtt_client.publish(topic, json.dumps(config), qos=1, retain=True)
             logger.debug(f"Published discovery for binary_{sensor['id']}")
             
         logger.info("Published MQTT discovery messages")
@@ -487,7 +487,7 @@ class MPPSolarMonitor:
         """Publish data to MQTT"""
         if self.mqtt_client and data:
             # Add timestamp
-            data['timestamp'] = datetime.now().isoformat()
+            data['timestamp'] = datetime.now(timezone.utc).isoformat()
             
             # Publish state
             self.mqtt_client.publish(

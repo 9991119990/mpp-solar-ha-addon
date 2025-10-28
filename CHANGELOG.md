@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.5] - 2025-10-28 - STABILITY + HARDENING
+### Fixed
+- Correct PI30 mapping: battery discharge current at index 15
+- Paho 2.x compatibility by using Callback API VERSION1 with MQTTv311
+- Discovery and availability published with QoS 1 and retain
+- Timestamp now timezone-aware ISO8601
+
+### Changed
+- Dockerfile: removed unnecessary build dependencies; copy only needed files
+- requirements: removed unused pyserial
+- Add-on config: removed SYS_ADMIN privilege and full_access
+
 ## [2.0.3] - 2025-07-20 - RELIABLE COMMUNICATION RESTORED
 ### 🔧 Fixed
 - **Restored proven v2.0.0 communication method** that was working
