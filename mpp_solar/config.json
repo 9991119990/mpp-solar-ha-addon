@@ -1,7 +1,7 @@
 {
   "name": "MPP Solar Monitor",
   "description": "Monitor MPP Solar PIP5048MG inverter and publish data to MQTT",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "slug": "mpp_solar",
   "init": false,
   "arch": ["aarch64", "amd64", "armhf", "armv7", "i386"],
@@ -36,3 +36,5 @@
   ],
   "services": ["mqtt:want"]
 }
+
+- Commit change (přímo na master).
