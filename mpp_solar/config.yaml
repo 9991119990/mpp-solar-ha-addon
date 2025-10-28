@@ -11,7 +11,6 @@ arch:
   - i386
 startup: application
 boot: auto
-stage: stable
 homeassistant: 2021.8.0
 options:
   device: "/dev/hidraw0"
@@ -32,9 +31,9 @@ schema:
   mqtt_topic: str
   debug: bool
 devices:
-  - /dev/hidraw0:/dev/hidraw0
-  - /dev/hidraw1:/dev/hidraw1
-  - /dev/hidraw2:/dev/hidraw2
-  - /dev/hidraw3:/dev/hidraw3
+  - /dev/hidraw0
+  - /dev/hidraw1
+  - /dev/hidraw2
+  - /dev/hidraw3
 services:
   - mqtt:want
