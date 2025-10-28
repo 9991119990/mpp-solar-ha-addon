@@ -269,9 +269,9 @@ class MPPSolarMonitor:
         try:
             # Use MQTT v1 callback API for compatibility with current callbacks
             self.mqtt_client = mqtt.Client(
-                mqtt.CallbackAPIVersion.VERSION1,
                 client_id=f"mpp_solar_{os.getpid()}",
-                protocol=mqtt.MQTTv311
+                protocol=mqtt.MQTTv311,
+                callback_api_version=mqtt.CallbackAPIVersion.VERSION1,
             )
             # Set LWT before connecting so broker marks offline on unexpected disconnects
             self.mqtt_client.will_set(
