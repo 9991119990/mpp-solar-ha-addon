@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.6] - 2025-10-28 - RELEASE BUMP
+### Changed
+- Version bump for distribution. No functional changes from 2.0.5.
+
 ## [2.0.5] - 2025-10-28 - STABILITY + HARDENING
 ### Fixed
 - Correct PI30 mapping: battery discharge current at index 15

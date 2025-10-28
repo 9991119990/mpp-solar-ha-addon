@@ -1,4 +1,4 @@
-# MPP Solar Home Assistant Add-on v2.0.5
+# MPP Solar Home Assistant Add-on v2.0.6
 
 Monitor your MPP Solar PIP5048MG inverter with **DIRECT display values** - no calculations!
 
