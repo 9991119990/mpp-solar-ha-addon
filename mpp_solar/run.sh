@@ -9,6 +9,7 @@ MQTT_USERNAME=$(bashio::config 'mqtt_username')
 MQTT_PASSWORD=$(bashio::config 'mqtt_password')
 MQTT_TOPIC=$(bashio::config 'mqtt_topic')
 DEBUG=$(bashio::config 'debug')
+CRC_STRICT=$(bashio::config 'crc_strict')
 
 # Try to get MQTT service info from HA (only if not configured manually)
 if bashio::services.available "mqtt" && [ "${MQTT_HOST}" = "core-mosquitto" ] && [ -z "${MQTT_USERNAME}" ]; then
@@ -39,6 +40,7 @@ export MQTT_USERNAME="${MQTT_USERNAME}"
 export MQTT_PASSWORD="${MQTT_PASSWORD}"
 export MQTT_TOPIC="${MQTT_TOPIC}"
 export DEBUG="${DEBUG}"
+export CRC_STRICT="${CRC_STRICT}"
 
 bashio::log.info "Starting MPP Solar Monitor..."
 bashio::log.info "Device: ${DEVICE}"

@@ -31,6 +31,7 @@ class MPPSolarMonitor:
         self.mqtt_pass = os.environ.get('MQTT_PASSWORD', '')
         self.mqtt_topic = os.environ.get('MQTT_TOPIC', 'mpp_solar')
         self.debug = os.environ.get('DEBUG', 'false').lower() == 'true'
+        self.crc_strict = os.environ.get('CRC_STRICT', 'false').lower() == 'true'
         
         if self.debug:
             logger.setLevel(logging.DEBUG)
@@ -141,20 +142,36 @@ class MPPSolarMonitor:
                         attempts += 1
                     
                     if len(response) > 10:
-                        logger.debug(f"Response hex: {response[:50].hex()}")
-                        
-                        # Decode response
-                        text = response.decode('ascii', errors='ignore').strip()
-                        logger.debug(f"Decoded text: {text[:100]}")
-                        
-                        if text.startswith('('):
-                            # Require a complete frame ending with ')' to avoid publishing partial data
-                            end_pos = text.find(')')
-                            if end_pos <= 0:
-                                logger.warning("Incomplete response (missing ')'), skipping this cycle")
+                        logger.debug(f"Response hex: {response[:80].hex()}")
+
+                        # Find frame boundaries in raw bytes and verify CRC if present
+                        try:
+                            start = response.find(b'(')
+                            end = response.find(b')', start + 1)
+                            if start == -1 or end == -1 or end + 3 > len(response):
+                                logger.warning("Incomplete response frame, skipping this cycle")
                                 return None
 
-                            data_str = text[1:end_pos]
+                            frame = response[start:end + 1]  # includes parentheses
+                            crc_bytes = response[end + 1:end + 3]
+                            expected_crc = int.from_bytes(crc_bytes, 'big')
+
+                            computed_crc = self.crc16_xmodem(frame)
+                            if computed_crc != expected_crc:
+                                logger.warning(
+                                    f"CRC mismatch: expected=0x{expected_crc:04X} computed=0x{computed_crc:04X}"
+                                )
+                                if self.crc_strict:
+                                    return None
+
+                            # Decode ASCII payload between parentheses
+                            text = frame.decode('ascii', errors='ignore')
+                            logger.debug(f"Decoded text: {text[:100]}")
+                            if not text.startswith('(') or not text.endswith(')'):
+                                logger.warning("Malformed frame text, skipping")
+                                return None
+
+                            data_str = text[1:-1]
                             values = data_str.split()
                             logger.debug(f"Parsed values count: {len(values)}")
 
@@ -164,8 +181,8 @@ class MPPSolarMonitor:
                             else:
                                 logger.warning(f"Invalid response length: {len(values)} (need >=17)")
                                 logger.warning(f"Values: {values}")
-                        else:
-                            logger.warning(f"Invalid response format: {text[:50]}")
+                        except Exception as e:
+                            logger.warning(f"Frame/CRC parse error: {e}")
                     else:
                         logger.warning(f"Short response: {len(response)} bytes")
                         if response:
@@ -335,7 +352,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.6"
+            "sw_version": "2.0.7"
         }
         
         # Sensor definitions

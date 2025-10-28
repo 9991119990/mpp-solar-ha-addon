@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.7] - 2025-10-28 - CRC VALIDATION
+### Added
+- Soft CRC16-XMODEM verification for inverter responses (warn on mismatch)
+- Optional `crc_strict` config to drop invalid frames (default false)
+
+### Changed
+- Publish `sw_version` as 2.0.7 in discovery device info
+- Minor supervisor compatibility tweaks in repo structure
+
 ## [2.0.6] - 2025-10-28 - RELEASE BUMP
 ### Changed
 - Version bump for distribution. No functional changes from 2.0.5.
