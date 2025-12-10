@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.0.8] - 2025-12-10 - RELEASE BUMP FOR HA
+### Changed
+- Version bump to trigger Home Assistant update. No functional changes.
+
+
 ## [2.0.7] - 2025-10-28 - CRC VALIDATION
 ### Added
 - Soft CRC16-XMODEM verification for inverter responses (warn on mismatch)
