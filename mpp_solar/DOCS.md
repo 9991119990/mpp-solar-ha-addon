@@ -31,6 +31,7 @@ This add-on monitors MPP Solar PIP5048MG inverters and publishes data to Home As
 - **mqtt_password**: MQTT password (leave empty if not required)
 - **mqtt_topic**: Base MQTT topic (default: `mpp_solar`)
 - **debug**: Enable debug logging (default: false)
+- **crc_strict**: Discard frames with invalid CRC instead of only logging a warning (default: false)
 
 ## Finding Your Device
 

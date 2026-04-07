@@ -73,8 +73,9 @@ class MPPSolarMonitor:
                     # Check permissions (no chmod in container)
                     if not os.access(self.device, os.R_OK | os.W_OK):
                         logger.warning(f"Device {self.device} not accessible")
-                    logger.info(f"Device {self.device} found and accessible")
-                    return True
+                    else:
+                        logger.info(f"Device {self.device} found and accessible")
+                        return True
                 except Exception as e:
                     logger.warning(f"Cannot access device: {e}")
             
@@ -352,7 +353,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.7"
+            "sw_version": "2.0.8"
         }
         
         # Sensor definitions

@@ -1,5 +1,15 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.11-alpine3.18
+ARG BUILD_VERSION=dev
+ARG BUILD_ARCH=unknown
 FROM $BUILD_FROM
+
+ARG BUILD_VERSION
+ARG BUILD_ARCH
+
+LABEL \
+  io.hass.version="${BUILD_VERSION}" \
+  io.hass.type="app" \
+  io.hass.arch="${BUILD_ARCH}"
 
 # Set workdir
 WORKDIR /app

@@ -1,7 +1,7 @@
 {
   "name": "MPP Solar Monitor",
   "description": "Monitor MPP Solar PIP5048MG inverter and publish data to MQTT",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "slug": "mpp_solar",
   "init": false,
   "arch": ["aarch64", "amd64", "armhf", "armv7", "i386"],
@@ -16,7 +16,8 @@
     "mqtt_username": "",
     "mqtt_password": "",
     "mqtt_topic": "mpp_solar",
-    "debug": false
+    "debug": false,
+    "crc_strict": false
   },
   "schema": {
     "device": "str",
@@ -26,7 +27,8 @@
     "mqtt_username": "str?",
     "mqtt_password": "password?",
     "mqtt_topic": "str",
-    "debug": "bool"
+    "debug": "bool",
+    "crc_strict": "bool"
   },
   "devices": [
     "/dev/hidraw0",
@@ -36,5 +38,3 @@
   ],
   "services": ["mqtt:want"]
 }
-
-- Commit change (přímo na master).

@@ -1,4 +1,4 @@
-# MPP Solar Home Assistant Add-on v2.0.7
+# MPP Solar Home Assistant Add-on v2.0.8
 
 Monitor your MPP Solar PIP5048MG inverter with **DIRECT display values** - no calculations!
 
@@ -48,6 +48,15 @@ interval: 5
 
 ## Changelog
 
+### v2.0.8 - Release bump for HA
+- Version bump to trigger Home Assistant update
+- Metadata synchronized across add-on files
+
+### v2.0.7 - CRC validation
+- Added CRC16-XMODEM verification of responses (soft warn by default)
+- New option `crc_strict` to discard frames with invalid CRC
+- Bumped device `sw_version` to 2.0.7
+
 ### v2.0.5 - Stability and HA compliance
 - Fixed battery discharge current index (PI30 mapping)
 - Paho MQTT compatibility: forced V1 callback API with MQTTv311
@@ -79,7 +88,3 @@ Example:
 
 For issues or questions, please visit:
 https://github.com/9991119990/mpp-solar-ha-addon/issues
-### v2.0.7 - CRC validation
-- Added CRC16-XMODEM verification of responses (soft warn by default)
-- New option `crc_strict` to discard frames with invalid CRC
-- Bumped device `sw_version` to 2.0.7
