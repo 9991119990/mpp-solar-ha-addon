@@ -1,7 +1,7 @@
 {
   "name": "MPP Solar Monitor",
   "description": "Monitor MPP Solar PIP5048MG inverter and publish data to MQTT",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "slug": "mpp_solar",
   "init": false,
   "arch": ["aarch64", "amd64", "armhf", "armv7", "i386"],

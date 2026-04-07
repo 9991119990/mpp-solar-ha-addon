@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.9] - 2026-04-07 - RELEASE BUMP FOR HA UPDATE
+### Changed
+- Version bump so Home Assistant detects a new update after metadata fixes.
+
 ## [2.0.8] - 2025-12-10 - RELEASE BUMP FOR HA
 ### Changed
 - Version bump to trigger Home Assistant update. No functional changes.

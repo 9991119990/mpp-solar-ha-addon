@@ -1,4 +1,4 @@
-# MPP Solar Home Assistant Add-on v2.0.8
+# MPP Solar Home Assistant Add-on v2.0.9
 
 Monitor your MPP Solar PIP5048MG inverter with **DIRECT display values** - no calculations!
 
@@ -48,9 +48,9 @@ interval: 5
 
 ## Changelog
 
-### v2.0.8 - Release bump for HA
-- Version bump to trigger Home Assistant update
-- Metadata synchronized across add-on files
+### v2.0.9 - Release bump for HA update detection
+- Version bump so Home Assistant shows a new update
+- Metadata remains synchronized across add-on files
 
 ### v2.0.7 - CRC validation
 - Added CRC16-XMODEM verification of responses (soft warn by default)

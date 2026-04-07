@@ -353,7 +353,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.8"
+            "sw_version": "2.0.9"
         }
         
         # Sensor definitions
