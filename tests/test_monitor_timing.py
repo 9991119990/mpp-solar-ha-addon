@@ -48,6 +48,26 @@ class MonitorTimingTests(unittest.TestCase):
 
         self.assertTrue(monitor.has_complete_response_frame(b"(230.0 50.0 230.0)AB\r"))
 
+    def test_extract_complete_frame_returns_frame_and_remaining_bytes(self):
+        monitor = MPPSolarMonitor()
+
+        frame, remaining = monitor.extract_complete_response_frame(
+            b"junk(230.0 50.0 230.0)AB\rtail"
+        )
+
+        self.assertEqual(frame, b"(230.0 50.0 230.0)AB\r")
+        self.assertEqual(remaining, b"tail")
+
+    def test_extract_complete_frame_keeps_partial_tail_for_next_cycle(self):
+        monitor = MPPSolarMonitor()
+
+        frame, remaining = monitor.extract_complete_response_frame(
+            b"noise(230.0 50.0 230.0)AB\r(48.0 10"
+        )
+
+        self.assertEqual(frame, b"(230.0 50.0 230.0)AB\r")
+        self.assertEqual(remaining, b"(48.0 10")
+
 
 if __name__ == "__main__":
     unittest.main()

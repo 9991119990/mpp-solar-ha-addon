@@ -44,6 +44,7 @@ class MPPSolarMonitor:
         
         self.mqtt_client = None
         self.device_available = False
+        self.response_buffer = b""
 
     def get_read_deadline_seconds(self) -> float:
         """Bound inverter read time so the loop can stay responsive."""
@@ -73,6 +74,32 @@ class MPPSolarMonitor:
         if end + 3 >= len(response):
             return False
         return response[end + 3:end + 4] == b'\r'
+
+    def extract_complete_response_frame(self, response: bytes) -> tuple[bytes | None, bytes]:
+        """Extract one complete frame and preserve any remaining bytes."""
+        if not response:
+            return None, b""
+
+        start = response.find(b'(')
+        if start == -1:
+            return None, b""
+
+        if start > 0:
+            response = response[start:]
+
+        end = response.find(b')', 1)
+        if end == -1 or end + 3 >= len(response):
+            return None, response
+
+        if response[end + 3:end + 4] != b'\r':
+            return None, response
+
+        frame = response[:end + 4]
+        remaining = response[end + 4:]
+        next_start = remaining.find(b'(')
+        if next_start > 0:
+            remaining = remaining[next_start:]
+        return frame, remaining
 
     def _looks_like_status_field(self, s: str) -> bool:
         """Heuristic: PI30 status is typically an 8-bit string of 0/1.
@@ -142,16 +169,6 @@ class MPPSolarMonitor:
             try:
                 logger.debug("Device opened successfully")
                 
-                # Clear any pending data with timeout
-                logger.debug("Clearing pending data")
-                ready, _, _ = select.select([fd], [], [], 0.1)
-                if ready:
-                    try:
-                        os.read(fd, 200)
-                        logger.debug("Cleared pending data")
-                    except:
-                        pass
-                
                 # Send QPIGS command
                 cmd = self.create_command('QPIGS')
                 logger.debug(f"Sending QPIGS command: {cmd.hex()}")
@@ -159,11 +176,16 @@ class MPPSolarMonitor:
                 
                 # Read until full frame is available or deadline is reached
                 logger.debug("Waiting for response...")
-                response = b""
+                response = self.response_buffer
                 deadline = time.monotonic() + self.get_read_deadline_seconds()
                 poll_timeout = self.get_poll_timeout_seconds()
+                frame = None
 
                 while time.monotonic() < deadline:
+                    frame, response = self.extract_complete_response_frame(response)
+                    if frame is not None:
+                        break
+
                     remaining = max(0.0, deadline - time.monotonic())
                     ready, _, _ = select.select([fd], [], [], min(poll_timeout, remaining))
                     if not ready:
@@ -176,10 +198,14 @@ class MPPSolarMonitor:
                     response += chunk
                     logger.debug(f"Received chunk: {len(chunk)} bytes, total={len(response)}")
 
-                    if self.has_complete_response_frame(response):
+                    frame, response = self.extract_complete_response_frame(response)
+                    if frame is not None:
                         break
 
-                if response:
+                self.response_buffer = response[-512:]
+
+                if frame is not None:
+                    response = frame
                     logger.debug(f"Received response: {len(response)} bytes")
 
                     if len(response) > 10:
@@ -228,6 +254,8 @@ class MPPSolarMonitor:
                         logger.warning(f"Short response: {len(response)} bytes")
                         if response:
                             logger.warning(f"Response hex: {response.hex()}")
+                elif response:
+                    logger.warning("Incomplete response frame, skipping this cycle")
                 else:
                     logger.warning(
                         f"No response from inverter within {self.get_read_deadline_seconds():.2f}s timeout"
@@ -425,7 +453,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.11"
+            "sw_version": "2.0.12"
         }
         
         # Sensor definitions

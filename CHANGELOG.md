@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.12] - 2026-04-09 - PERSISTENT FRAGMENT BUFFER
+
+### Fixed
+- Preserve partial HID response bytes across cycles
+- Reassemble fragmented inverter replies instead of dropping them on the next poll
+- Improve chances of successful publishes when the inverter sends split frames
+
 ## [2.0.11] - 2026-04-09 - IMPROVED FRAME COMPLETION
 ### Fixed
 - Reader now waits for a full `(payload)CRC\r` response before parsing
