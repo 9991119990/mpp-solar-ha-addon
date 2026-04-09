@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.0] - 2026-04-09 - STABLE PARTIAL RESPONSE OPERATION
+
+### Changed
+- Lower successful partial-response fallback logging from warning to info
+- Promote the recent HID communication fixes into the 2.1 release line
+
 ## [2.0.14] - 2026-04-09 - LATEST PARTIAL PAYLOAD SELECTION
 
 ### Fixed

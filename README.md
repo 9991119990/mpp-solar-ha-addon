@@ -1,4 +1,4 @@
-# MPP Solar Home Assistant Add-on v2.0.14
+# MPP Solar Home Assistant Add-on v2.1.0
 
 Monitor your MPP Solar PIP5048MG inverter with **DIRECT display values** - no calculations!
 
@@ -47,6 +47,11 @@ interval: 5
 - And more...
 
 ## Changelog
+
+### v2.1.0 - Stable partial-response operation
+- Downgrade successful partial-response fallback logging from warning to info
+- Keep 5s updates and latest-payload selection behavior
+- Package the communication fixes into the 2.1 release
 
 ### v2.0.14 - Latest partial payload selection
 - When fallback parsing is used, parse only the latest partial QPIGS payload in the buffer

@@ -282,7 +282,7 @@ class MPPSolarMonitor:
                 elif response:
                     values = self.extract_values_from_response(response)
                     if values is not None:
-                        logger.warning(f"Using partial inverter response with {len(values)} values")
+                        logger.info(f"Using partial inverter response with {len(values)} values")
                         logger.debug(f"Partial response hex: {response[:80].hex()}")
                         return self.parse_qpigs(values)
                     logger.warning("Incomplete response frame, skipping this cycle")
@@ -483,7 +483,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.14"
+            "sw_version": "2.1.0"
         }
         
         # Sensor definitions
