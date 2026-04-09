@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.10] - 2026-04-09 - FASTER UPDATE RESPONSIVENESS
+### Fixed
+- Main loop now sleeps only for the remainder of the configured interval
+- HID reading now uses a short deadline-based read window instead of long chained waits
+
+### Added
+- Unit tests for cycle pacing and read timeout budgeting
+
 ## [2.0.9] - 2026-04-07 - RELEASE BUMP FOR HA UPDATE
 ### Changed
 - Version bump so Home Assistant detects a new update after metadata fixes.
@@ -7,7 +15,6 @@
 ## [2.0.8] - 2025-12-10 - RELEASE BUMP FOR HA
 ### Changed
 - Version bump to trigger Home Assistant update. No functional changes.
-
 
 ## [2.0.7] - 2025-10-28 - CRC VALIDATION
 ### Added

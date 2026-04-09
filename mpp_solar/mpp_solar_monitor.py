@@ -44,6 +44,33 @@ class MPPSolarMonitor:
         
         self.mqtt_client = None
         self.device_available = False
+
+    def get_read_deadline_seconds(self) -> float:
+        """Bound inverter read time so the loop can stay responsive."""
+        return max(0.8, min(1.5, self.interval * 0.3))
+
+    def get_poll_timeout_seconds(self) -> float:
+        """Short poll slices let us stop as soon as a full frame is available."""
+        return max(0.05, min(0.2, self.get_read_deadline_seconds() / 4))
+
+    def compute_cycle_sleep(self, started_at: float, finished_at: float | None = None) -> float:
+        """Sleep only for the remainder of the configured interval."""
+        if finished_at is None:
+            finished_at = time.monotonic()
+        elapsed = max(0.0, finished_at - started_at)
+        return max(0.0, self.interval - elapsed)
+
+    def _looks_like_status_field(self, s: str) -> bool:
+        """Heuristic: PI30 status is typically an 8-bit string of 0/1.
+        Accept 8..12 chars consisting only of 0/1 to be tolerant across variants."""
+        if not isinstance(s, str):
+            try:
+                s = str(s)
+            except Exception:
+                return False
+        if len(s) < 8 or len(s) > 12:
+            return False
+        return set(s) <= {"0", "1"}
         
     def crc16_xmodem(self, data):
         """Calculate CRC16 XMODEM"""
@@ -116,32 +143,36 @@ class MPPSolarMonitor:
                 logger.debug(f"Sending QPIGS command: {cmd.hex()}")
                 os.write(fd, cmd)
                 
-                # Wait for response (restored v2.0.0 working method)
+                # Read until full frame is available or deadline is reached
                 logger.debug("Waiting for response...")
-                ready, _, _ = select.select([fd], [], [], 3.0)
-                
-                if ready:
-                    logger.debug("Response available, reading...")
-                    response = os.read(fd, 200)
+                response = b""
+                deadline = time.monotonic() + self.get_read_deadline_seconds()
+                poll_timeout = self.get_poll_timeout_seconds()
+
+                while time.monotonic() < deadline:
+                    remaining = max(0.0, deadline - time.monotonic())
+                    ready, _, _ = select.select([fd], [], [], min(poll_timeout, remaining))
+                    if not ready:
+                        continue
+
+                    chunk = os.read(fd, 512)
+                    if not chunk:
+                        continue
+
+                    response += chunk
+                    logger.debug(f"Received chunk: {len(chunk)} bytes, total={len(response)}")
+
+                    start = response.find(b'(')
+                    end = response.find(b')', start + 1) if start != -1 else -1
+                    if start != -1 and end != -1 and end + 3 <= len(response):
+                        break
+
+                    if b'\r' in response:
+                        break
+
+                if response:
                     logger.debug(f"Received response: {len(response)} bytes")
-                    
-                    # Read complete response (restored v2.0.0 proven method)
-                    attempts = 0
-                    while len(response) < 300 and (b'\r' not in response) and attempts < 15:  # stop when CR received
-                        time.sleep(0.1)
-                        ready, _, _ = select.select([fd], [], [], 1.5)  # Shorter than 2.0s but longer than 1.0s
-                        if ready:
-                            more_data = os.read(fd, 500)  # Increased buffer
-                            if more_data:
-                                response += more_data
-                                logger.debug(f"Read additional {len(more_data)} bytes, total: {len(response)}")
-                            else:
-                                break
-                        else:
-                            if attempts % 5 == 0:  # Less frequent logging
-                                logger.debug(f"No data ready, attempt {attempts}")
-                        attempts += 1
-                    
+
                     if len(response) > 10:
                         logger.debug(f"Response hex: {response[:80].hex()}")
 
@@ -189,7 +220,9 @@ class MPPSolarMonitor:
                         if response:
                             logger.warning(f"Response hex: {response.hex()}")
                 else:
-                    logger.warning("No response from inverter within timeout")
+                    logger.warning(
+                        f"No response from inverter within {self.get_read_deadline_seconds():.2f}s timeout"
+                    )
                     
             finally:
                 os.close(fd)
@@ -212,6 +245,27 @@ class MPPSolarMonitor:
                 logger.warning(f"Too few values in QPIGS: {len(values)}")
                 return None
 
+            if self.debug:
+                logger.debug(f"QPIGS values: {values}")
+
+            # Detect status index first (variant-dependent)
+            status_idx = None
+            if len(values) > 20 and self._looks_like_status_field(values[20]):
+                status_idx = 20
+            elif len(values) > 16 and self._looks_like_status_field(values[16]):
+                status_idx = 16
+
+            # Map battery discharge current index based on detected status layout
+            # If status at 20 → discharge current typically at 16 (older mapping that worked for you)
+            # If status at 16 → discharge current at 15 (newer PI30 mapping)
+            if status_idx == 20 and len(values) > 16:
+                batt_discharge_idx = 16
+            elif status_idx == 16 and len(values) > 15:
+                batt_discharge_idx = 15
+            else:
+                # Fallback: prefer 15 if present else 16
+                batt_discharge_idx = 15 if len(values) > 15 else (16 if len(values) > 16 else None)
+
             data = {
                 # AC Input
                 'ac_input_voltage': float(values[0]),
@@ -232,8 +286,8 @@ class MPPSolarMonitor:
                 'battery_voltage': float(values[8]),
                 'battery_charging_current': int(values[9]) if len(values) > 9 else 0,
                 'battery_capacity': int(values[10]) if len(values) > 10 else 0,
-                # PI30: index 15 = battery discharge current, 16 = status flags
-                'battery_discharge_current': int(values[15]) if len(values) > 15 else 0,
+                # Battery discharge current: resolved above from detected layout
+                'battery_discharge_current': int(values[batt_discharge_idx]) if batt_discharge_idx is not None else 0,
                 
                 # Temperature
                 'inverter_temperature': int(values[11]) if len(values) > 11 else 0,
@@ -243,22 +297,31 @@ class MPPSolarMonitor:
                 'pv_input_voltage': float(values[13]) if len(values) > 13 else 0.0,
                 'battery_scc_voltage': float(values[14]) if len(values) > 14 else 0.0,
                 
-                # Status (PI30: status flags are typically at index 16)
-                'device_status': values[16] if len(values) > 16 else '00000000',
+                # Status determined by detection; fallback to zeros
+                'device_status': (values[status_idx] if status_idx is not None else '00000000'),
             }
             
             # MPP Solar PV power - DIRECT VALUE IN POSITION 19 (FINAL VERSION 2.0.0)
             # Direct reading from position 19 - same as EASUN inverters
+            pv_power_set = False
             if len(values) > 19:
                 try:
                     data['pv_input_power'] = int(values[19])
+                    pv_power_set = True
                     logger.debug(f"PV power from pos[19]: {data['pv_input_power']}W")
-                except:
-                    data['pv_input_power'] = 0
-                    logger.warning("Position 19 not available, using 0W")
-            else:
-                data['pv_input_power'] = 0
-                logger.warning(f"Not enough values ({len(values)}), need at least 20")
+                except Exception as e:
+                    logger.debug(f"Failed to parse PV power from pos[19]: {e}")
+            # Safe fallback when position 19 is missing or unparsable
+            if not pv_power_set:
+                try:
+                    calc = int(round(data['pv_input_voltage'] * data['pv_input_current']))
+                except Exception:
+                    calc = 0
+                data['pv_input_power'] = calc
+                if self.debug:
+                    logger.debug(
+                        f"PV power fallback V*I: {data['pv_input_voltage']}V * {data['pv_input_current']}A = {calc}W"
+                    )
             
             # Battery power (positive = charging, negative = discharging)
             battery_current = data['battery_charging_current'] - data['battery_discharge_current']
@@ -353,7 +416,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.9"
+            "sw_version": "2.0.10"
         }
         
         # Sensor definitions
@@ -544,10 +607,14 @@ class MPPSolarMonitor:
         logger.info("Starting main monitoring loop...")
         
         while True:
+            cycle_started = time.monotonic()
             try:
                 logger.debug("Reading inverter data...")
                 # Read inverter data
+                read_started = time.monotonic()
                 data = self.read_inverter_data()
+                read_finished = time.monotonic()
+                read_elapsed = read_finished - read_started
                 
                 if data:
                     self.publish_data(data)
@@ -562,6 +629,11 @@ class MPPSolarMonitor:
                         if not self.wait_for_device():
                             break
                         error_count = 0
+
+                if self.debug:
+                    logger.debug(
+                        f"Cycle timings: read={read_elapsed:.2f}s total={time.monotonic() - cycle_started:.2f}s"
+                    )
                     
             except KeyboardInterrupt:
                 logger.info("Shutting down...")
@@ -571,7 +643,7 @@ class MPPSolarMonitor:
                 error_count += 1
                 
             # Wait for next cycle
-            time.sleep(self.interval)
+            time.sleep(self.compute_cycle_sleep(cycle_started))
         
         # Cleanup
         if self.mqtt_client:

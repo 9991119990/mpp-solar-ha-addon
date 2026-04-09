@@ -1,4 +1,4 @@
-# MPP Solar Home Assistant Add-on v2.0.9
+# MPP Solar Home Assistant Add-on v2.0.10
 
 Monitor your MPP Solar PIP5048MG inverter with **DIRECT display values** - no calculations!
 
@@ -47,6 +47,11 @@ interval: 5
 - And more...
 
 ## Changelog
+
+### v2.0.10 - Faster update responsiveness
+- Fixed loop pacing so `interval` is measured from cycle start, not after read completion
+- Replaced long chained HID waits with a shorter deadline-based read loop
+- Added timing-oriented unit tests for cycle pacing and read budget
 
 ### v2.0.9 - Release bump for HA update detection
 - Version bump so Home Assistant shows a new update
