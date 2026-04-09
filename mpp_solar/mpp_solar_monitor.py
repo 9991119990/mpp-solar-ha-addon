@@ -47,7 +47,7 @@ class MPPSolarMonitor:
 
     def get_read_deadline_seconds(self) -> float:
         """Bound inverter read time so the loop can stay responsive."""
-        return max(0.8, min(1.5, self.interval * 0.3))
+        return max(1.2, min(2.0, self.interval * 0.4))
 
     def get_poll_timeout_seconds(self) -> float:
         """Short poll slices let us stop as soon as a full frame is available."""
@@ -59,6 +59,20 @@ class MPPSolarMonitor:
             finished_at = time.monotonic()
         elapsed = max(0.0, finished_at - started_at)
         return max(0.0, self.interval - elapsed)
+
+    def has_complete_response_frame(self, response: bytes) -> bool:
+        """Return True only when the full '(payload)CRC\\r' frame is present."""
+        if not response:
+            return False
+        start = response.find(b'(')
+        if start == -1:
+            return False
+        end = response.find(b')', start + 1)
+        if end == -1:
+            return False
+        if end + 3 >= len(response):
+            return False
+        return response[end + 3:end + 4] == b'\r'
 
     def _looks_like_status_field(self, s: str) -> bool:
         """Heuristic: PI30 status is typically an 8-bit string of 0/1.
@@ -162,12 +176,7 @@ class MPPSolarMonitor:
                     response += chunk
                     logger.debug(f"Received chunk: {len(chunk)} bytes, total={len(response)}")
 
-                    start = response.find(b'(')
-                    end = response.find(b')', start + 1) if start != -1 else -1
-                    if start != -1 and end != -1 and end + 3 <= len(response):
-                        break
-
-                    if b'\r' in response:
+                    if self.has_complete_response_frame(response):
                         break
 
                 if response:
@@ -416,7 +425,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.10"
+            "sw_version": "2.0.11"
         }
         
         # Sensor definitions

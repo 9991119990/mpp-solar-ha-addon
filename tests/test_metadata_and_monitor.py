@@ -11,12 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class MetadataTests(unittest.TestCase):
-    def test_release_version_is_2_0_10(self):
+    def test_release_version_is_2_0_11(self):
         config_yaml = (ROOT / "mpp_solar" / "config.yaml").read_text()
         yaml_version = re.search(r'^version:\s*"([^"]+)"', config_yaml, re.MULTILINE)
 
         self.assertIsNotNone(yaml_version)
-        self.assertEqual("2.0.10", yaml_version.group(1))
+        self.assertEqual("2.0.11", yaml_version.group(1))
 
     def test_config_json_is_valid_json(self):
         config_json = ROOT / "mpp_solar" / "config.json"

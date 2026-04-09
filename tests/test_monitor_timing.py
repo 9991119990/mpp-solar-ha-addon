@@ -36,7 +36,17 @@ class MonitorTimingTests(unittest.TestCase):
     def test_read_deadline_is_capped_for_low_latency_updates(self):
         monitor = MPPSolarMonitor()
 
-        self.assertLessEqual(monitor.get_read_deadline_seconds(), 1.5)
+        self.assertLessEqual(monitor.get_read_deadline_seconds(), 2.0)
+
+    def test_response_is_incomplete_without_closing_frame_and_crc(self):
+        monitor = MPPSolarMonitor()
+
+        self.assertFalse(monitor.has_complete_response_frame(b"(230.0 50.0 230.0\r"))
+
+    def test_response_is_complete_with_payload_crc_and_carriage_return(self):
+        monitor = MPPSolarMonitor()
+
+        self.assertTrue(monitor.has_complete_response_frame(b"(230.0 50.0 230.0)AB\r"))
 
 
 if __name__ == "__main__":

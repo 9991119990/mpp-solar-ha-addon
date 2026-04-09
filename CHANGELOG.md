@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.11] - 2026-04-09 - IMPROVED FRAME COMPLETION
+### Fixed
+- Reader now waits for a full `(payload)CRC\r` response before parsing
+- Removed premature exit on partial carriage returns inside fragmented HID reads
+- Increased read budget modestly to improve complete-frame capture
+
 ## [2.0.10] - 2026-04-09 - FASTER UPDATE RESPONSIVENESS
 ### Fixed
 - Main loop now sleeps only for the remainder of the configured interval
