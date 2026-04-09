@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.13] - 2026-04-09 - PARTIAL QPIGS FALLBACK RESTORED
+
+### Fixed
+- Restore parsing of partial QPIGS ASCII payloads when the inverter does not deliver a full framed reply
+- Keep complete-frame CRC parsing as the preferred path and use partial payload parsing as a fallback
+- Improve publish reliability on devices that frequently return split or truncated HID reads
+
 ## [2.0.12] - 2026-04-09 - PERSISTENT FRAGMENT BUFFER
 
 ### Fixed

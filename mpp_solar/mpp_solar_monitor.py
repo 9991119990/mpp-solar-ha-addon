@@ -101,6 +101,31 @@ class MPPSolarMonitor:
             remaining = remaining[next_start:]
         return frame, remaining
 
+    def extract_values_from_response(self, response: bytes) -> list[str] | None:
+        """Extract QPIGS values from a complete or partial ASCII response."""
+        if not response:
+            return None
+
+        start = response.find(b'(')
+        if start == -1:
+            return None
+
+        payload = response[start:]
+        text = payload.decode('ascii', errors='ignore').strip()
+        if not text.startswith('('):
+            return None
+
+        end_pos = text.find(')')
+        if end_pos > 0:
+            data_str = text[1:end_pos]
+        else:
+            data_str = text[1:].rstrip('\r\n')
+
+        values = data_str.split()
+        if len(values) >= 17:
+            return values
+        return None
+
     def _looks_like_status_field(self, s: str) -> bool:
         """Heuristic: PI30 status is typically an 8-bit string of 0/1.
         Accept 8..12 chars consisting only of 0/1 to be tolerant across variants."""
@@ -255,6 +280,11 @@ class MPPSolarMonitor:
                         if response:
                             logger.warning(f"Response hex: {response.hex()}")
                 elif response:
+                    values = self.extract_values_from_response(response)
+                    if values is not None:
+                        logger.warning(f"Using partial inverter response with {len(values)} values")
+                        logger.debug(f"Partial response hex: {response[:80].hex()}")
+                        return self.parse_qpigs(values)
                     logger.warning("Incomplete response frame, skipping this cycle")
                 else:
                     logger.warning(
@@ -453,7 +483,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.12"
+            "sw_version": "2.0.13"
         }
         
         # Sensor definitions
