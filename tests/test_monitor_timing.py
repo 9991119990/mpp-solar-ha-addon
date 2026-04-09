@@ -89,6 +89,18 @@ class MonitorTimingTests(unittest.TestCase):
         self.assertIsNotNone(values)
         self.assertEqual(values[0], "230.0")
 
+    def test_extract_values_from_response_uses_latest_partial_frame(self):
+        monitor = MPPSolarMonitor()
+
+        values = monitor.extract_values_from_response(
+            b"(230.0 50.0 230.0 50.0 2500 2343 046 420 52.00 27 048 0033 05.0 105.7 54.00 000 00010000"
+            b"(231.0 50.0 231.0 50.0 2600 2400 047 421 52.10 28 049 0034 05.1 106.0 54.10 000 00010001"
+        )
+
+        self.assertIsNotNone(values)
+        self.assertEqual(values[0], "231.0")
+        self.assertEqual(values[5], "2400")
+
 
 if __name__ == "__main__":
     unittest.main()

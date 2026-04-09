@@ -106,7 +106,7 @@ class MPPSolarMonitor:
         if not response:
             return None
 
-        start = response.find(b'(')
+        start = response.rfind(b'(')
         if start == -1:
             return None
 
@@ -483,7 +483,7 @@ class MPPSolarMonitor:
             "name": "MPP Solar PIP5048MG",
             "model": "PIP5048MG",
             "manufacturer": "MPP Solar",
-            "sw_version": "2.0.13"
+            "sw_version": "2.0.14"
         }
         
         # Sensor definitions

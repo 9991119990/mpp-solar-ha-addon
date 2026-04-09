@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.14] - 2026-04-09 - LATEST PARTIAL PAYLOAD SELECTION
+
+### Fixed
+- Use the latest partial QPIGS payload in the fallback parser instead of the oldest one in the buffer
+- Prevent stale buffered payloads from inflating parsed value counts across cycles
+- Improve freshness of published values when the inverter keeps sending truncated replies
+
 ## [2.0.13] - 2026-04-09 - PARTIAL QPIGS FALLBACK RESTORED
 
 ### Fixed
